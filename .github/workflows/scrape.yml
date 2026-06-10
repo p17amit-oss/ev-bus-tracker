@@ -20,6 +20,8 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
@@ -44,9 +46,11 @@ jobs:
         continue-on-error: true
         run: python scrapers/cesl.py
 
-      - name: Scrape Vahan registrations
+      # Vahan geo-blocks non-Indian IPs; this step is expected to fail on
+      # GitHub runners. Run vahan_local.sh from your Mac via launchd instead.
+      - name: Scrape Vahan registrations (Indian IP required)
         continue-on-error: true
-        run: python scrapers/vahan.py
+        run: python scrapers/vahan.py || echo "::warning::Vahan skipped (geo-block expected on GH runners — use launchd on Mac)"
 
       - name: Commit updated database
         run: |
