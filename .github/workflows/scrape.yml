@@ -42,6 +42,10 @@ jobs:
         continue-on-error: true
         run: python scrapers/bse.py
 
+      - name: Triage BSE announcements into tenders/deployments
+        continue-on-error: true
+        run: python pipeline/triage.py
+
       - name: Scrape CESL tenders
         continue-on-error: true
         run: python scrapers/cesl.py
