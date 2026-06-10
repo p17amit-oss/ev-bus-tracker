@@ -1,8 +1,7 @@
 ---
-// Home: live tender board + latest registration month.
-// Data comes from JSON exported by pipeline/export_json.py at scrape time.
 import tenders from '../data/tenders.json';
 import registrations from '../data/registrations_monthly.json';
+import organizations from '../data/organizations.json';
 
 const openTenders = tenders.filter((t) => ['open', 'extended', 'announced'].includes(t.status));
 const months = [...new Set(registrations.map((r) => r.month))].sort();
@@ -11,6 +10,8 @@ const latestMakers = registrations
   .filter((r) => r.month === latestMonth)
   .sort((a, b) => b.count - a.count)
   .slice(0, 10);
+const totalBuses = openTenders.reduce((sum, t) => sum + (t.bus_count || 0), 0);
+const oems = organizations.filter((o) => o.org_type === 'oem');
 ---
 
 <html lang="en">
@@ -18,38 +19,360 @@ const latestMakers = registrations
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>India Electric Bus Tracker — tenders, orders & registrations</title>
-    <meta
-      name="description"
-      content="Daily-updated tracker of India's electric bus market: live CESL & state tenders, OEM order disclosures, and monthly Vahan registration data."
-    />
+    <meta name="description" content="Daily-updated tracker of India's electric bus market: live CESL & state tenders, OEM order disclosures, and monthly Vahan registration data." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --green: #16a34a;
+        --green-light: #dcfce7;
+        --green-dark: #14532d;
+        --blue: #2563eb;
+        --blue-light: #dbeafe;
+        --amber: #d97706;
+        --amber-light: #fef3c7;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-500: #6b7280;
+        --gray-700: #374151;
+        --gray-900: #111827;
+        --radius: 12px;
+        --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+        --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background: var(--gray-50);
+        color: var(--gray-900);
+        line-height: 1.6;
+      }
+
+      /* ── Nav ── */
+      nav {
+        background: white;
+        border-bottom: 1px solid var(--gray-200);
+        padding: 0 24px;
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        height: 56px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .nav-brand {
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--green-dark);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .nav-links { display: flex; gap: 24px; margin-left: auto; }
+      .nav-links a {
+        font-size: 14px;
+        color: var(--gray-500);
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .nav-links a:hover { color: var(--gray-900); }
+      .badge-live {
+        background: var(--green-light);
+        color: var(--green-dark);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 99px;
+        letter-spacing: .3px;
+      }
+
+      /* ── Hero ── */
+      .hero {
+        background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+        color: white;
+        padding: 64px 24px 56px;
+        text-align: center;
+      }
+      .hero h1 {
+        font-size: clamp(28px, 5vw, 48px);
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 16px;
+      }
+      .hero p {
+        font-size: 18px;
+        opacity: .85;
+        max-width: 560px;
+        margin: 0 auto 40px;
+      }
+      .stats-row {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .stat-chip {
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 99px;
+        padding: 10px 24px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .stat-chip span { opacity: .75; font-weight: 400; font-size: 13px; margin-left: 6px; }
+
+      /* ── Main layout ── */
+      .container { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
+      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+      @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+      /* ── Cards ── */
+      .card {
+        background: white;
+        border-radius: var(--radius);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .card-header {
+        padding: 20px 24px 16px;
+        border-bottom: 1px solid var(--gray-100);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .card-header h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--gray-900);
+      }
+      .card-header .count {
+        font-size: 13px;
+        color: var(--gray-500);
+        background: var(--gray-100);
+        padding: 2px 10px;
+        border-radius: 99px;
+      }
+
+      /* ── Tender list ── */
+      .tender-item {
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--gray-100);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tender-item:last-child { border-bottom: none; }
+      .tender-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--gray-900);
+        text-decoration: none;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .tender-title:hover { color: var(--blue); }
+      .tender-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .tag {
+        font-size: 12px;
+        font-weight: 500;
+        padding: 2px 10px;
+        border-radius: 99px;
+      }
+      .tag-green { background: var(--green-light); color: var(--green-dark); }
+      .tag-blue  { background: var(--blue-light);  color: var(--blue); }
+      .tag-amber { background: var(--amber-light); color: var(--amber); }
+      .tag-gray  { background: var(--gray-100);    color: var(--gray-700); }
+
+      /* ── Registration table ── */
+      .reg-table { width: 100%; border-collapse: collapse; }
+      .reg-table th {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--gray-500);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        padding: 10px 24px;
+        text-align: left;
+        background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+      }
+      .reg-table td {
+        padding: 12px 24px;
+        font-size: 14px;
+        border-bottom: 1px solid var(--gray-100);
+      }
+      .reg-table tr:last-child td { border-bottom: none; }
+      .reg-table td:last-child { text-align: right; font-weight: 600; color: var(--green); }
+      .bar-wrap { display: flex; align-items: center; gap: 10px; }
+      .bar {
+        height: 6px;
+        background: var(--green-light);
+        border-radius: 99px;
+        flex: 1;
+        max-width: 80px;
+      }
+      .bar-fill {
+        height: 100%;
+        background: var(--green);
+        border-radius: 99px;
+      }
+
+      /* ── Announcements ── */
+      .ann-item {
+        padding: 14px 24px;
+        border-bottom: 1px solid var(--gray-100);
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--gray-700);
+      }
+      .ann-item:last-child { border-bottom: none; }
+      .ann-company { font-weight: 600; color: var(--gray-900); }
+
+      /* ── Empty state ── */
+      .empty {
+        padding: 40px 24px;
+        text-align: center;
+        color: var(--gray-500);
+        font-size: 14px;
+      }
+
+      /* ── Footer ── */
+      footer {
+        background: white;
+        border-top: 1px solid var(--gray-200);
+        padding: 32px 24px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--gray-500);
+      }
+      footer strong { color: var(--gray-700); }
+    </style>
   </head>
   <body>
-    <h1>🚌 India Electric Bus Tracker</h1>
-    <p>Tenders, OEM orders, and registrations — updated daily from public sources.</p>
 
-    <h2>Open tenders ({openTenders.length})</h2>
-    <ul>
-      {openTenders.map((t) => (
-        <li>
-          <a href={t.source_url}>{t.title}</a>
-          {t.bus_count && <strong> — {t.bus_count} buses</strong>}
-          {t.bid_due_date && <em> (bids due {t.bid_due_date})</em>}
-        </li>
-      ))}
-    </ul>
+    <nav>
+      <a class="nav-brand" href="/">🚌 EV Bus Tracker</a>
+      <span class="badge-live">● Live</span>
+      <div class="nav-links">
+        <a href="#tenders">Tenders</a>
+        <a href="#registrations">Registrations</a>
+        <a href="#oems">OEMs</a>
+      </div>
+    </nav>
 
-    {latestMonth && (
-      <>
-        <h2>E-bus registrations by maker — {latestMonth}</h2>
-        <table>
-          <thead><tr><th>Maker</th><th>Registrations</th></tr></thead>
-          <tbody>
-            {latestMakers.map((r) => (
-              <tr><td>{r.maker}</td><td>{r.count}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </>
-    )}
+    <div class="hero">
+      <h1>India Electric Bus<br/>Intelligence Tracker</h1>
+      <p>Live tenders, OEM order disclosures, and monthly registration data — scraped daily from public sources.</p>
+      <div class="stats-row">
+        <div class="stat-chip">
+          {openTenders.length} <span>open tenders</span>
+        </div>
+        <div class="stat-chip">
+          {totalBuses.toLocaleString('en-IN')} <span>buses in play</span>
+        </div>
+        <div class="stat-chip">
+          {oems.length} <span>OEMs tracked</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <div class="grid-2" id="tenders">
+
+        <!-- Open Tenders -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Open Tenders</h2>
+            <span class="count">{openTenders.length}</span>
+          </div>
+          {openTenders.length === 0 ? (
+            <div class="empty">No open tenders right now.</div>
+          ) : (
+            openTenders.map((t) => (
+              <div class="tender-item">
+                <a class="tender-title" href={t.source_url} target="_blank" rel="noopener">
+                  {t.title.replace(/^\d+\s+/, '').slice(0, 120)}
+                </a>
+                <div class="tender-meta">
+                  {t.bus_count && (
+                    <span class="tag tag-green">{t.bus_count.toLocaleString('en-IN')} buses</span>
+                  )}
+                  {t.procurement_model === 'gcc' && (
+                    <span class="tag tag-blue">GCC</span>
+                  )}
+                  {t.bid_due_date && (
+                    <span class="tag tag-amber">Due {t.bid_due_date}</span>
+                  )}
+                  {t.issuer_name && (
+                    <span class="tag tag-gray">{t.issuer_name}</span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <!-- Registrations -->
+        <div class="card" id="registrations">
+          <div class="card-header">
+            <h2>Registrations by Maker</h2>
+            {latestMonth && <span class="count">{latestMonth}</span>}
+          </div>
+          {!latestMonth ? (
+            <div class="empty">Vahan data not yet loaded.<br/>Will appear after first successful scrape.</div>
+          ) : (
+            <table class="reg-table">
+              <thead>
+                <tr>
+                  <th>Maker</th>
+                  <th style="text-align:right">Units</th>
+                </tr>
+              </thead>
+              <tbody>
+                {latestMakers.map((r, i) => {
+                  const max = latestMakers[0].count;
+                  const pct = Math.round((r.count / max) * 100);
+                  return (
+                    <tr>
+                      <td>
+                        <div class="bar-wrap">
+                          <div class="bar"><div class="bar-fill" style={`width:${pct}%`}></div></div>
+                          {r.maker}
+                        </div>
+                      </td>
+                      <td>{r.count.toLocaleString('en-IN')}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+      </div>
+
+    </div>
+
+    <footer>
+      <strong>India EV Bus Tracker</strong> — Data from BSE, CESL, and Vahan Analytics.
+      Updated daily. Not affiliated with any government body or company.
+    </footer>
+
   </body>
 </html>
