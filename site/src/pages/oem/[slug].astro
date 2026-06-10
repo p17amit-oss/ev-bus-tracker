@@ -17,7 +17,7 @@ const orgTenders = tenders.filter(
 const openTenders = orgTenders.filter((t) =>
   ['open', 'extended', 'announced'].includes(t.status)
 );
-const orgDeployments = deployments.filter((d) => d.oem_org_id === org.id);
+const orgDeployments = deployments.filter((d) => d.oem_name === org.name);
 const totalDeployed = orgDeployments.reduce((s, d) => s + (d.bus_count || 0), 0);
 const activeCities = [...new Set(orgDeployments.map((d) => d.city).filter(Boolean))];
 ---
@@ -102,6 +102,20 @@ const activeCities = [...new Set(orgDeployments.map((d) => d.city).filter(Boolea
       }
 
       .empty { padding: 32px 24px; text-align: center; color: var(--gray-500); font-size: 14px; }
+
+      .dep-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      .dep-table th {
+        font-size: 11px; font-weight: 600; color: var(--gray-500);
+        text-transform: uppercase; letter-spacing: .5px;
+        padding: 10px 16px; text-align: left; background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+      }
+      .dep-table td { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+      .dep-table tr:last-child td { border-bottom: none; }
+      .dep-table tfoot td { background: var(--gray-50); border-top: 2px solid var(--gray-200); }
+      .dep-table .num { text-align: right; font-weight: 600; color: var(--green); }
+      .dep-table .model { color: var(--gray-500); font-size: 13px; }
+      .dep-table .date { color: var(--gray-500); font-size: 13px; white-space: nowrap; }
 
       .links-row { display: flex; gap: 12px; flex-wrap: wrap; padding: 20px 24px; }
       .ext-link {
@@ -196,18 +210,44 @@ const activeCities = [...new Set(orgDeployments.map((d) => d.city).filter(Boolea
         )}
       </div>
 
-      <!-- Deployments / cities -->
-      {activeCities.length > 0 && (
+      <!-- Deployments table -->
+      {orgDeployments.length > 0 && (
         <div class="card">
           <div class="card-header">
-            <h2>Cities with {org.name} Buses</h2>
-            <span class="count">{activeCities.length}</span>
+            <h2>Known Deployments</h2>
+            <span class="count">{orgDeployments.length} cities</span>
           </div>
-          <div class="city-grid">
-            {activeCities.map((city) => (
-              <span class="city-chip">{city}</span>
-            ))}
-          </div>
+          <table class="dep-table">
+            <thead>
+              <tr>
+                <th>City</th>
+                <th>Operator</th>
+                <th>Model</th>
+                <th>Buses</th>
+                <th>Since</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orgDeployments
+                .sort((a, b) => (b.bus_count || 0) - (a.bus_count || 0))
+                .map((d) => (
+                  <tr>
+                    <td><strong>{d.city || '—'}</strong>{d.state ? `, ${d.state}` : ''}</td>
+                    <td>{d.operator_name || '—'}</td>
+                    <td class="model">{d.bus_model || '—'}</td>
+                    <td class="num">{(d.bus_count || 0).toLocaleString('en-IN')}</td>
+                    <td class="date">{d.deployment_date ? d.deployment_date.slice(0, 7) : '—'}</td>
+                  </tr>
+                ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3"><strong>Total</strong></td>
+                <td class="num"><strong>{totalDeployed.toLocaleString('en-IN')}</strong></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       )}
 
