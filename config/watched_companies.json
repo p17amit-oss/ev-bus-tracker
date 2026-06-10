@@ -1,0 +1,19 @@
+{
+  "_comment": "Listed companies whose BSE disclosures we monitor for e-bus signals. scrip_code is the BSE security code. Extend freely; the scraper iterates this list.",
+  "companies": [
+    {"name": "Olectra Greentech", "slug": "olectra-greentech", "scrip_code": "532439", "org_type": "oem"},
+    {"name": "JBM Auto", "slug": "jbm-auto", "scrip_code": "532605", "org_type": "oem"},
+    {"name": "Tata Motors", "slug": "tata-motors", "scrip_code": "500570", "org_type": "oem"},
+    {"name": "Ashok Leyland", "slug": "ashok-leyland", "scrip_code": "500477", "org_type": "oem"},
+    {"name": "Eicher Motors", "slug": "eicher-motors", "scrip_code": "505200", "org_type": "oem"},
+    {"name": "Veera Vahana (NueGo parent watch)", "slug": "greencell-watch", "scrip_code": null, "org_type": "operator"}
+  ],
+  "keywords": [
+    "electric bus", "e-bus", "ebus", "e bus",
+    "letter of award", "letter of acceptance", "loa",
+    "order for supply", "bagging of order", "bags order",
+    "gcc contract", "gross cost contract",
+    "cesl", "pm e-bus sewa", "pm ebus sewa", "fame",
+    "charging infrastructure", "bus depot"
+  ]
+}

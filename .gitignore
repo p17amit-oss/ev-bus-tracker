@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node / Astro
+site/node_modules/
+site/dist/
+site/.astro/
+
+# SQLite sidecar files (the .db itself IS committed — data-in-git pattern)
+data/*.db-wal
+data/*.db-shm
+
+# Local scratch
+digest.md
+.DS_Store

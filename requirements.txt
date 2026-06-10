@@ -1,0 +1,6 @@
+# Scraper dependencies — pinned to major versions; Dependabot can bump.
+# Both are widely used, actively maintained packages. Verify against the
+# internal approved-tools list before installing on a company machine.
+requests>=2.32,<3
+beautifulsoup4>=4.12,<5
+playwright>=1.45,<2

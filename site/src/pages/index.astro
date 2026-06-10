@@ -1,0 +1,55 @@
+---
+// Home: live tender board + latest registration month.
+// Data comes from JSON exported by pipeline/export_json.py at scrape time.
+import tenders from '../data/tenders.json';
+import registrations from '../data/registrations_monthly.json';
+
+const openTenders = tenders.filter((t) => ['open', 'extended', 'announced'].includes(t.status));
+const months = [...new Set(registrations.map((r) => r.month))].sort();
+const latestMonth = months.at(-1);
+const latestMakers = registrations
+  .filter((r) => r.month === latestMonth)
+  .sort((a, b) => b.count - a.count)
+  .slice(0, 10);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>India Electric Bus Tracker — tenders, orders & registrations</title>
+    <meta
+      name="description"
+      content="Daily-updated tracker of India's electric bus market: live CESL & state tenders, OEM order disclosures, and monthly Vahan registration data."
+    />
+  </head>
+  <body>
+    <h1>🚌 India Electric Bus Tracker</h1>
+    <p>Tenders, OEM orders, and registrations — updated daily from public sources.</p>
+
+    <h2>Open tenders ({openTenders.length})</h2>
+    <ul>
+      {openTenders.map((t) => (
+        <li>
+          <a href={t.source_url}>{t.title}</a>
+          {t.bus_count && <strong> — {t.bus_count} buses</strong>}
+          {t.bid_due_date && <em> (bids due {t.bid_due_date})</em>}
+        </li>
+      ))}
+    </ul>
+
+    {latestMonth && (
+      <>
+        <h2>E-bus registrations by maker — {latestMonth}</h2>
+        <table>
+          <thead><tr><th>Maker</th><th>Registrations</th></tr></thead>
+          <tbody>
+            {latestMakers.map((r) => (
+              <tr><td>{r.maker}</td><td>{r.count}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </>
+    )}
+  </body>
+</html>

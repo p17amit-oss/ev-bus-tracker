@@ -1,0 +1,78 @@
+# Daily scrape -> commit DB -> health digest.
+# Data-in-git pattern: the SQLite file lives in the repo, so storage,
+# scheduling, and "deployment" are all free GitHub primitives. Zero servers.
+name: daily-scrape
+
+on:
+  schedule:
+    - cron: "30 2 * * *" # 08:00 IST daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # commit the updated DB
+  issues: write # open an alert issue when health check goes red
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      # Scrapers run independently: one source breaking must not block the
+      # others, so each step has continue-on-error and health_check.py is
+      # the single arbiter of red/green.
+      - name: Scrape BSE announcements
+        continue-on-error: true
+        run: python scrapers/bse.py
+
+      - name: Scrape CESL tenders
+        continue-on-error: true
+        run: python scrapers/cesl.py
+
+      - name: Scrape Vahan registrations
+        continue-on-error: true
+        run: python scrapers/vahan.py
+
+      - name: Commit updated database
+        run: |
+          git config user.name "evbus-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/evbus.db
+          git diff --cached --quiet || git commit -m "data: daily scrape $(date -u +%F)"
+          git push
+
+      - name: Health-check digest
+        id: digest
+        run: |
+          set +e
+          python pipeline/health_check.py | tee digest.md
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          cat digest.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open alert issue on critical
+        if: steps.digest.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue list --label health-alert --state open --json number -q '.[0].number' > existing.txt
+          if [ -s existing.txt ]; then
+            gh issue comment "$(cat existing.txt)" --body-file digest.md
+          else
+            gh issue create --title "🔴 Scraper health alert $(date -u +%F)" \
+              --label health-alert --body-file digest.md
+          fi
