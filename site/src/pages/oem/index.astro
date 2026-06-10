@@ -1,0 +1,89 @@
+---
+import organizations from '../../data/organizations.json';
+import tenders from '../../data/tenders.json';
+
+const oems = organizations.filter((o) => o.org_type === 'oem');
+
+function openTenderCount(org) {
+  return tenders.filter(
+    (t) => ['open','extended','announced'].includes(t.status) &&
+           (t.issuing_org_id === org.id || t.issuer_slug === org.slug)
+  ).length;
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Electric Bus OEMs in India — Orders, Tenders & Market Share</title>
+    <meta name="description" content="Track all major Indian electric bus manufacturers: Olectra, JBM, Tata Motors, Ashok Leyland and more — orders, tenders, and city deployments." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      :root {
+        --green: #16a34a; --green-light: #dcfce7; --green-dark: #14532d;
+        --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+        --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827;
+        --radius: 12px;
+      }
+      body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-900); line-height: 1.6; }
+      nav {
+        background: white; border-bottom: 1px solid var(--gray-200);
+        padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 56px;
+        position: sticky; top: 0; z-index: 10;
+      }
+      .nav-brand { font-weight: 700; font-size: 15px; color: var(--green-dark); text-decoration: none; }
+      .hero {
+        background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+        color: white; padding: 48px 24px 40px; text-align: center;
+      }
+      .hero h1 { font-size: clamp(22px, 4vw, 34px); font-weight: 700; margin-bottom: 10px; }
+      .hero p { font-size: 16px; opacity: .8; max-width: 500px; margin: 0 auto; }
+      .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+      .oem-card {
+        background: white; border-radius: var(--radius); border: 1px solid var(--gray-200);
+        padding: 24px; text-decoration: none; color: inherit;
+        transition: box-shadow .15s, border-color .15s;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .oem-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); border-color: var(--green); }
+      .oem-name { font-size: 16px; font-weight: 600; color: var(--gray-900); }
+      .oem-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+      .tag { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 99px; }
+      .tag-green { background: var(--green-light); color: var(--green-dark); }
+      .tag-gray  { background: var(--gray-100); color: var(--gray-700); }
+      .arrow { margin-top: auto; font-size: 13px; color: var(--gray-500); }
+      footer { background: white; border-top: 1px solid var(--gray-200); padding: 24px; text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 40px; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a class="nav-brand" href="/">🚌 EV Bus Tracker</a>
+    </nav>
+    <div class="hero">
+      <h1>Electric Bus OEMs in India</h1>
+      <p>Orders, tenders, and deployments for every major manufacturer — updated daily.</p>
+    </div>
+    <div class="container">
+      <div class="grid">
+        {oems.map((org) => {
+          const open = openTenderCount(org);
+          return (
+            <a class="oem-card" href={`/oem/${org.slug}/`}>
+              <div class="oem-name">{org.name}</div>
+              <div class="oem-meta">
+                {open > 0 && <span class="tag tag-green">{open} open tender{open > 1 ? 's' : ''}</span>}
+                {org.bse_scrip_code && <span class="tag tag-gray">BSE: {org.bse_scrip_code}</span>}
+              </div>
+              <div class="arrow">View profile →</div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+    <footer>Data from BSE disclosures and public tender portals. Updated daily.</footer>
+  </body>
+</html>

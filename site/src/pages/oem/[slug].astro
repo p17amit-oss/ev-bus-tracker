@@ -1,0 +1,220 @@
+---
+import organizations from '../../data/organizations.json';
+import tenders from '../../data/tenders.json';
+import deployments from '../../data/deployments.json';
+
+export function getStaticPaths() {
+  return organizations
+    .filter((o) => o.org_type === 'oem')
+    .map((o) => ({ params: { slug: o.slug }, props: { org: o } }));
+}
+
+const { org } = Astro.props;
+
+const orgTenders = tenders.filter(
+  (t) => t.issuing_org_id === org.id || t.issuer_slug === org.slug
+);
+const openTenders = orgTenders.filter((t) =>
+  ['open', 'extended', 'announced'].includes(t.status)
+);
+const orgDeployments = deployments.filter((d) => d.oem_org_id === org.id);
+const totalDeployed = orgDeployments.reduce((s, d) => s + (d.bus_count || 0), 0);
+const activeCities = [...new Set(orgDeployments.map((d) => d.city).filter(Boolean))];
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{org.name} Electric Bus Orders, Tenders & Deployments — EV Bus Tracker</title>
+    <meta
+      name="description"
+      content={`Track ${org.name}'s electric bus orders, live tenders, and city deployments across India. Updated daily from BSE disclosures and public tender portals.`}
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      :root {
+        --green: #16a34a; --green-light: #dcfce7; --green-dark: #14532d;
+        --blue: #2563eb; --blue-light: #dbeafe;
+        --amber: #d97706; --amber-light: #fef3c7;
+        --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+        --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827;
+        --radius: 12px;
+      }
+      body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-900); line-height: 1.6; }
+      nav {
+        background: white; border-bottom: 1px solid var(--gray-200);
+        padding: 0 24px; display: flex; align-items: center; gap: 16px;
+        height: 56px; position: sticky; top: 0; z-index: 10;
+      }
+      .nav-brand { font-weight: 700; font-size: 15px; color: var(--green-dark); text-decoration: none; }
+      .breadcrumb { font-size: 14px; color: var(--gray-500); display: flex; align-items: center; gap: 8px; }
+      .breadcrumb a { color: var(--gray-500); text-decoration: none; }
+      .breadcrumb a:hover { color: var(--gray-900); }
+
+      .hero {
+        background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+        color: white; padding: 48px 24px 40px;
+      }
+      .hero-inner { max-width: 900px; margin: 0 auto; }
+      .org-type-badge {
+        display: inline-block; background: rgba(255,255,255,.15);
+        border: 1px solid rgba(255,255,255,.25); border-radius: 99px;
+        font-size: 12px; font-weight: 600; padding: 3px 12px;
+        text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px;
+      }
+      .hero h1 { font-size: clamp(24px, 4vw, 36px); font-weight: 700; margin-bottom: 8px; }
+      .hero p { font-size: 16px; opacity: .8; margin-bottom: 32px; }
+      .stats-row { display: flex; gap: 16px; flex-wrap: wrap; }
+      .stat-box {
+        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+        border-radius: 10px; padding: 16px 24px; min-width: 130px;
+      }
+      .stat-box .num { font-size: 28px; font-weight: 700; line-height: 1; }
+      .stat-box .label { font-size: 12px; opacity: .7; margin-top: 4px; }
+
+      .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; display: flex; flex-direction: column; gap: 24px; }
+      .card { background: white; border-radius: var(--radius); border: 1px solid var(--gray-200); overflow: hidden; }
+      .card-header {
+        padding: 18px 24px 14px; border-bottom: 1px solid var(--gray-100);
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .card-header h2 { font-size: 15px; font-weight: 600; }
+      .count { font-size: 12px; color: var(--gray-500); background: var(--gray-100); padding: 2px 10px; border-radius: 99px; }
+
+      .tender-item { padding: 16px 24px; border-bottom: 1px solid var(--gray-100); }
+      .tender-item:last-child { border-bottom: none; }
+      .tender-title { font-size: 14px; font-weight: 500; color: var(--gray-900); text-decoration: none; display: block; margin-bottom: 8px; line-height: 1.4; }
+      .tender-title:hover { color: var(--blue); }
+      .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+      .tag { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 99px; }
+      .tag-green { background: var(--green-light); color: var(--green-dark); }
+      .tag-blue  { background: var(--blue-light);  color: var(--blue); }
+      .tag-amber { background: var(--amber-light); color: var(--amber); }
+      .tag-gray  { background: var(--gray-100);    color: var(--gray-700); }
+
+      .city-grid { padding: 20px 24px; display: flex; gap: 10px; flex-wrap: wrap; }
+      .city-chip {
+        background: var(--green-light); color: var(--green-dark);
+        font-size: 13px; font-weight: 500; padding: 6px 16px; border-radius: 99px;
+      }
+
+      .empty { padding: 32px 24px; text-align: center; color: var(--gray-500); font-size: 14px; }
+
+      .links-row { display: flex; gap: 12px; flex-wrap: wrap; padding: 20px 24px; }
+      .ext-link {
+        font-size: 13px; font-weight: 500; color: var(--blue);
+        text-decoration: none; display: flex; align-items: center; gap: 4px;
+      }
+      .ext-link:hover { text-decoration: underline; }
+
+      footer { background: white; border-top: 1px solid var(--gray-200); padding: 24px; text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 24px; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a class="nav-brand" href="/">🚌 EV Bus Tracker</a>
+      <div class="breadcrumb">
+        <span>›</span>
+        <a href="/">Home</a>
+        <span>›</span>
+        <span>{org.name}</span>
+      </div>
+    </nav>
+
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="org-type-badge">OEM</div>
+        <h1>{org.name}</h1>
+        <p>Electric bus orders, tenders, and deployments across India</p>
+        <div class="stats-row">
+          <div class="stat-box">
+            <div class="num">{openTenders.length}</div>
+            <div class="label">open tenders</div>
+          </div>
+          <div class="stat-box">
+            <div class="num">{orgTenders.length}</div>
+            <div class="label">total tenders</div>
+          </div>
+          <div class="stat-box">
+            <div class="num">{totalDeployed > 0 ? totalDeployed.toLocaleString('en-IN') : '—'}</div>
+            <div class="label">buses deployed</div>
+          </div>
+          <div class="stat-box">
+            <div class="num">{activeCities.length > 0 ? activeCities.length : '—'}</div>
+            <div class="label">cities</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <!-- External links -->
+      {(org.website || org.bse_scrip_code) && (
+        <div class="card">
+          <div class="links-row">
+            {org.website && (
+              <a class="ext-link" href={org.website} target="_blank" rel="noopener">
+                🌐 Official website
+              </a>
+            )}
+            {org.bse_scrip_code && (
+              <a class="ext-link"
+                href={`https://www.bseindia.com/stock-share-price/x/x/${org.bse_scrip_code}/`}
+                target="_blank" rel="noopener">
+                📈 BSE: {org.bse_scrip_code}
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      <!-- Open tenders -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Open Tenders</h2>
+          <span class="count">{openTenders.length}</span>
+        </div>
+        {openTenders.length === 0 ? (
+          <div class="empty">No open tenders found for {org.name} right now.</div>
+        ) : (
+          openTenders.map((t) => (
+            <div class="tender-item">
+              <a class="tender-title" href={t.source_url} target="_blank" rel="noopener">
+                {t.title.replace(/^\d+\s+/, '').slice(0, 160)}
+              </a>
+              <div class="tags">
+                {t.bus_count && <span class="tag tag-green">{t.bus_count.toLocaleString('en-IN')} buses</span>}
+                {t.procurement_model === 'gcc' && <span class="tag tag-blue">GCC</span>}
+                {t.bid_due_date && <span class="tag tag-amber">Due {t.bid_due_date}</span>}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <!-- Deployments / cities -->
+      {activeCities.length > 0 && (
+        <div class="card">
+          <div class="card-header">
+            <h2>Cities with {org.name} Buses</h2>
+            <span class="count">{activeCities.length}</span>
+          </div>
+          <div class="city-grid">
+            {activeCities.map((city) => (
+              <span class="city-chip">{city}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+    </div>
+
+    <footer>
+      Data from BSE disclosures and public tender portals. Updated daily. Not affiliated with {org.name}.
+    </footer>
+  </body>
+</html>
