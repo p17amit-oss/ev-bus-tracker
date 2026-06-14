@@ -1,0 +1,17 @@
+---
+interface Props {
+  label: string;
+  score?: number | null;
+}
+const { label, score } = Astro.props;
+
+const MAP: Record<string, { cls: string; icon: string }> = {
+  high:    { cls: 'tag-green', icon: '✓' },
+  medium:  { cls: 'tag-amber', icon: '~' },
+  low:     { cls: 'tag-red',   icon: '!' },
+  unknown: { cls: 'tag-gray',  icon: '?' },
+};
+const cfg = MAP[label?.toLowerCase()] ?? { cls: 'tag-gray', icon: '?' };
+const text = score != null ? `${label} · ${score}` : label;
+---
+<span class={`tag ${cfg.cls}`} title={`Confidence: ${text}`}>{cfg.icon} {label}</span>

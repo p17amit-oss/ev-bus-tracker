@@ -1,0 +1,179 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import registrations from '../../data/registrations_monthly.json';
+
+const hasData = registrations.length > 0;
+const months = hasData ? [...new Set(registrations.map(r => r.month))].sort().reverse() : [];
+const latestMonth = months[0] ?? null;
+---
+<Layout
+  title="Electric Bus Registrations India — Monthly Vahan Data | EV Bus Tracker"
+  description="Monthly electric bus registration data from Vahan analytics — maker-wise, state-wise, and category-wise. PM e-Bus Sewa and PM E-DRIVE fleet build-out tracked."
+>
+  <style>
+    .page-hero {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 36px 24px 28px;
+    }
+    .page-hero h1 { font-size: clamp(20px,4vw,30px); font-weight: 700; margin-bottom: 8px; }
+    .page-hero p { font-size: 14px; color: var(--gray-500); max-width: 600px; }
+
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+    .charts-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    }
+    @media (max-width: 640px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .coming-soon-section {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .coming-soon-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .coming-soon-header h2 { font-size: 14px; font-weight: 600; }
+    .coming-soon-body {
+      padding: 40px 24px; text-align: center;
+      background: repeating-linear-gradient(45deg,var(--gray-50),var(--gray-50) 8px,var(--gray-100) 8px,var(--gray-100) 16px);
+    }
+    .coming-soon-body .cs-icon { font-size: 40px; margin-bottom: 12px; }
+    .coming-soon-body h3 { font-size: 15px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px; }
+    .coming-soon-body p { font-size: 13px; color: var(--gray-500); max-width: 340px; margin: 0 auto; }
+
+    .info-box {
+      background: var(--blue-light); border: 1px solid #bfdbfe;
+      border-radius: var(--radius); padding: 14px 18px;
+      font-size: 13px; color: #1e3a8a; line-height: 1.6;
+    }
+    .info-box strong { color: #1e40af; }
+
+    .fields-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 10px;
+    }
+    .field-item {
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: var(--radius); padding: 10px 14px;
+      font-size: 13px; color: var(--gray-700);
+    }
+    .field-item code {
+      font-size: 11px; font-family: 'Monaco', monospace;
+      color: var(--gray-500); display: block; margin-top: 2px;
+    }
+  </style>
+
+  <div class="page-hero">
+    <div style="max-width:1100px;margin:0 auto">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;font-weight:500;text-transform:uppercase;letter-spacing:.5px">
+        Registrations
+      </div>
+      <h1>Electric Bus Registrations — Vahan Data</h1>
+      <p>Monthly registration intelligence from Vahan analytics. Maker-wise, state-wise, and category-wise data on India's e-bus fleet build-out.</p>
+      <div class="badges">
+        <span class="tag tag-gray">Source: Vahan Analytics</span>
+        <span class="tag tag-amber">Module coming soon</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div style="display:flex;flex-direction:column;gap:24px">
+
+      <!-- Status banner -->
+      <div class="info-box">
+        <strong>Vahan data is not yet loaded.</strong> The scraper for Vahan analytics is configured
+        and runs locally due to geo-restrictions on GitHub runners. Registration data will appear here
+        after the first successful local scrape is committed. See <a href="/methodology/" style="color:var(--blue)">Methodology</a> for details.
+      </div>
+
+      <!-- Chart placeholders -->
+      <div>
+        <h2 style="font-size:16px;font-weight:700;margin-bottom:16px">Registration Charts</h2>
+        <div class="charts-grid">
+          <div class="coming-soon-section">
+            <div class="coming-soon-header"><h2>Monthly Registrations Trend</h2></div>
+            <div class="coming-soon-body">
+              <div class="cs-icon">📈</div>
+              <h3>Chart will appear here</h3>
+              <p>Month-over-month e-bus registrations across all makers. Vahan data pending.</p>
+            </div>
+          </div>
+          <div class="coming-soon-section">
+            <div class="coming-soon-header"><h2>OEM Market Share</h2></div>
+            <div class="coming-soon-body">
+              <div class="cs-icon">🥧</div>
+              <h3>Chart will appear here</h3>
+              <p>Maker-wise share of monthly registrations. Vahan data pending.</p>
+            </div>
+          </div>
+          <div class="coming-soon-section">
+            <div class="coming-soon-header"><h2>State-wise Registrations</h2></div>
+            <div class="coming-soon-body">
+              <div class="cs-icon">🗺️</div>
+              <h3>Chart will appear here</h3>
+              <p>Top states by e-bus registration volume. Vahan data pending.</p>
+            </div>
+          </div>
+          <div class="coming-soon-section">
+            <div class="coming-soon-header"><h2>Year-on-Year Comparison</h2></div>
+            <div class="coming-soon-body">
+              <div class="cs-icon">📊</div>
+              <h3>Chart will appear here</h3>
+              <p>YoY growth in e-bus registrations by maker and state. Vahan data pending.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- What will be tracked -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Data Fields Tracked</h2>
+          <span class="pill">Coming soon</span>
+        </div>
+        <div style="padding:20px 24px">
+          <p style="font-size:14px;color:var(--gray-500);margin-bottom:16px">
+            Once Vahan data is loaded, each record will include:
+          </p>
+          <div class="fields-grid">
+            <div class="field-item">Month / Year<code>registration_month</code></div>
+            <div class="field-item">OEM / Maker<code>maker_name</code></div>
+            <div class="field-item">State<code>state</code></div>
+            <div class="field-item">Vehicle Category<code>vehicle_category</code></div>
+            <div class="field-item">Registration Count<code>count</code></div>
+            <div class="field-item">Source<code>source_name</code></div>
+            <div class="field-item">Last Checked<code>last_checked_at</code></div>
+            <div class="field-item">Confidence<code>confidence_label</code></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Methodology -->
+      <div class="card">
+        <div class="card-header"><h2>Methodology</h2></div>
+        <div style="padding:20px 24px;font-size:14px;color:var(--gray-700);line-height:1.7">
+          <p>
+            Registration data is sourced from <strong>Vahan Analytics</strong>
+            (vahan.parivahan.gov.in), the Government of India's vehicle registration database.
+            Data is filtered for electric buses (vehicle category: e-bus / EV commercial) and
+            grouped by maker and state.
+          </p>
+          <p style="margin-top:12px">
+            <strong>Important caveats:</strong>
+          </p>
+          <ul style="margin:8px 0 0 20px;line-height:1.8">
+            <li>Vahan data has a known delay of 1–2 months from actual registration.</li>
+            <li>Batch registrations (large fleet deliveries) may show as spikes in a single month.</li>
+            <li>Some makers may register buses across multiple RTOs in batches, affecting state-wise split.</li>
+            <li>Vahan data reflects registered units, not operational buses — some may be registered but not yet deployed.</li>
+          </ul>
+          <p style="margin-top:12px">
+            <a href="/methodology/" style="color:var(--blue)">Full methodology →</a>
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</Layout>

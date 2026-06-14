@@ -1,0 +1,22 @@
+---
+interface Props {
+  status: string;
+}
+const { status } = Astro.props;
+
+const MAP: Record<string, { label: string; cls: string }> = {
+  open:         { label: 'Open',         cls: 'tag-green'  },
+  closing_soon: { label: 'Closing Soon', cls: 'tag-amber'  },
+  extended:     { label: 'Extended',     cls: 'tag-blue'   },
+  closed:       { label: 'Closed',       cls: 'tag-gray'   },
+  awarded:      { label: 'Awarded',      cls: 'tag-blue'   },
+  cancelled:    { label: 'Cancelled',    cls: 'tag-red'    },
+  needs_review: { label: 'Needs Review', cls: 'tag-amber'  },
+  upcoming:     { label: 'Upcoming',     cls: 'tag-purple' },
+  active:       { label: 'Active',       cls: 'tag-green'  },
+  unknown:      { label: 'Unknown',      cls: 'tag-gray'   },
+};
+
+const cfg = MAP[status?.toLowerCase()] ?? { label: status ?? 'Unknown', cls: 'tag-gray' };
+---
+<span class={`tag ${cfg.cls}`}>{cfg.label}</span>

@@ -1,8 +1,8 @@
 import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
 
-// Fully static output — Cloudflare Pages free tier serves it with no
-// functions, no KV, no bill.
 export default defineConfig({
   output: 'static',
-  site: 'https://evbus-tracker.pages.dev', // swap for custom domain later
+  site: 'https://ev-bus-tracker.pages.dev', // swap for custom domain — update here when ready
+  integrations: [sitemap()],
 });

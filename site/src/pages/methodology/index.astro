@@ -1,0 +1,354 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+<Layout
+  title="Methodology | India EV Bus Tracker Public-Source Data"
+  description="How India EV Bus Tracker collects, classifies, and scores data on electric bus tenders, OEM activity, registrations, and charging infra. Sources, confidence scores, and limitations explained."
+>
+  <style>
+    .page-hero {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 40px 24px 32px;
+    }
+    .page-hero h1 { font-size: clamp(22px,4vw,32px); font-weight: 700; margin-bottom: 8px; }
+    .page-hero p { font-size: 15px; color: var(--gray-500); max-width: 620px; }
+
+    .content { display: flex; flex-direction: column; gap: 32px; }
+    .section { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 28px 32px; }
+    .section h2 { font-size: 17px; font-weight: 700; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--gray-100); }
+    .section h3 { font-size: 14px; font-weight: 600; margin: 20px 0 8px; color: var(--gray-900); }
+    .section p { font-size: 14px; color: var(--gray-700); line-height: 1.7; margin-bottom: 12px; }
+    .section p:last-child { margin-bottom: 0; }
+    .section ul, .section ol { margin: 8px 0 12px 20px; }
+    .section li { font-size: 14px; color: var(--gray-700); line-height: 1.7; margin-bottom: 4px; }
+
+    .source-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    .source-table th {
+      text-align: left; padding: 8px 12px;
+      font-size: 11px; font-weight: 600; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: .5px;
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+    }
+    .source-table td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+    .source-table tr:last-child td { border-bottom: none; }
+
+    .stage-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    .stage-table th {
+      text-align: left; padding: 8px 12px;
+      font-size: 11px; font-weight: 600; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: .5px;
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+    }
+    .stage-table td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+    .stage-table tr:last-child td { border-bottom: none; }
+
+    .conf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+    .conf-card { padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--gray-200); }
+    .conf-card .conf-label { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .conf-card p { font-size: 12px; color: var(--gray-500); line-height: 1.5; margin: 0; }
+    .conf-high   { border-left: 3px solid var(--green);  }
+    .conf-medium { border-left: 3px solid var(--amber);  }
+    .conf-low    { border-left: 3px solid var(--red);    }
+    .conf-unknown{ border-left: 3px solid var(--gray-300);}
+
+    .disclaimer-box {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius);
+      padding: 16px 20px; font-size: 13px; color: #92400e; line-height: 1.6;
+    }
+    .disclaimer-box strong { color: #78350f; }
+
+    .toc { display: flex; flex-direction: column; gap: 6px; }
+    .toc a { font-size: 14px; color: var(--blue); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    .toc-num { color: var(--gray-400); margin-right: 6px; font-size: 12px; }
+
+    @media (max-width: 640px) {
+      .section { padding: 20px 16px; }
+    }
+  </style>
+
+  <div class="page-hero">
+    <div style="max-width:820px;margin:0 auto">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;font-weight:500;text-transform:uppercase;letter-spacing:.5px">
+        Methodology
+      </div>
+      <h1>How This Tracker Works</h1>
+      <p>Data sources, collection methods, confidence scoring, stage definitions, and limitations — so you can judge the reliability of every record.</p>
+    </div>
+  </div>
+
+  <div class="container-sm">
+    <div class="content">
+
+      <!-- ToC -->
+      <div class="section">
+        <h2>Contents</h2>
+        <div class="toc">
+          <a href="#sources"><span class="toc-num">1.</span> Data Sources</a>
+          <a href="#collection"><span class="toc-num">2.</span> Collection Method</a>
+          <a href="#stages"><span class="toc-num">3.</span> Procurement Stage Definitions</a>
+          <a href="#status"><span class="toc-num">4.</span> Tender Status Logic</a>
+          <a href="#confidence"><span class="toc-num">5.</span> Confidence Scores</a>
+          <a href="#limitations"><span class="toc-num">6.</span> Limitations</a>
+          <a href="#disclaimer"><span class="toc-num">7.</span> Disclaimer</a>
+        </div>
+      </div>
+
+      <!-- Principle -->
+      <div class="section">
+        <h2>Core Principle</h2>
+        <p>
+          This tracker uses <strong>only public data</strong>. No confidential employer data,
+          no proprietary research, no insider information. Every record is sourced from a
+          publicly accessible document or portal, and that source is recorded alongside the data.
+        </p>
+        <p>
+          This tracker is not affiliated with any government agency, OEM, STU, bus operator,
+          charging company, or financial institution. It is an independent public-source
+          intelligence service.
+        </p>
+      </div>
+
+      <!-- Sources -->
+      <div id="sources" class="section">
+        <h2>1. Data Sources</h2>
+        <p>Records in this tracker come from the following primary source types:</p>
+        <table class="source-table">
+          <thead>
+            <tr>
+              <th>Source Type</th>
+              <th>Examples</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Government tender portals</strong></td>
+              <td>CESL (convergence.co.in/tender), GeM, state STU portals</td>
+              <td><span class="tag tag-green">High</span></td>
+            </tr>
+            <tr>
+              <td><strong>Official tender PDFs</strong></td>
+              <td>RFQ/RFP documents from CESL, DIMTS, APSRTC, etc.</td>
+              <td><span class="tag tag-green">High</span></td>
+            </tr>
+            <tr>
+              <td><strong>Stock exchange filings</strong></td>
+              <td>BSE/NSE order announcements, quarterly results, investor presentations</td>
+              <td><span class="tag tag-green">High</span></td>
+            </tr>
+            <tr>
+              <td><strong>Government press releases</strong></td>
+              <td>MHI, MoRTH, PM e-Bus Sewa scheme notifications</td>
+              <td><span class="tag tag-green">High</span></td>
+            </tr>
+            <tr>
+              <td><strong>OEM disclosures</strong></td>
+              <td>Annual reports, investor presentations, press releases</td>
+              <td><span class="tag tag-amber">Medium</span></td>
+            </tr>
+            <tr>
+              <td><strong>Vahan analytics</strong></td>
+              <td>vahan.parivahan.gov.in — monthly registration data by maker/category</td>
+              <td><span class="tag tag-green">High</span></td>
+            </tr>
+            <tr>
+              <td><strong>Trade press</strong></td>
+              <td>ET Auto, Business Standard, EV Reporter, Clean Technica India</td>
+              <td><span class="tag tag-amber">Medium</span></td>
+            </tr>
+            <tr>
+              <td><strong>Manual review</strong></td>
+              <td>Hand-curated from multiple public sources with cross-verification</td>
+              <td><span class="tag tag-amber">Medium</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Collection -->
+      <div id="collection" class="section">
+        <h2>2. Collection Method</h2>
+        <h3>Automated scrapers</h3>
+        <p>
+          Automated scripts run daily to collect data from:
+        </p>
+        <ul>
+          <li><strong>CESL tender portal</strong> — scans for new tenders and updates to existing ones</li>
+          <li><strong>BSE India API</strong> — monitors announcements from tracked OEMs (Olectra, JBM Auto, Tata Motors, Ashok Leyland, Eicher Motors) for e-bus signals</li>
+          <li><strong>Vahan analytics</strong> — monthly scrape of electric bus registration data by maker</li>
+        </ul>
+        <h3>Manual data entry</h3>
+        <p>
+          Deployment history, OEM profiles, and state-level aggregates are manually curated
+          from annual reports, press releases, and tender documents. Each record carries a
+          <code>last_checked_at</code> date.
+        </p>
+        <h3>Triage and staging</h3>
+        <p>
+          BSE announcements are automatically staged for review. A triage pipeline classifies
+          each announcement as: order (bus count confirmed), press release (deployment update),
+          tender (new or corrigendum), or boilerplate (financial filings, routine disclosures).
+          Only classified non-boilerplate items are surfaced.
+        </p>
+      </div>
+
+      <!-- Stages -->
+      <div id="stages" class="section">
+        <h2>3. Procurement Stage Definitions</h2>
+        <p>
+          These terms have precise meanings in the context of this tracker.
+          Do not treat them interchangeably.
+        </p>
+        <table class="stage-table">
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Definition</th>
+              <th>Data needed to confirm</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Sanctioned</strong></td>
+              <td>Government has approved a programme budget and bus allocation for a state/city.</td>
+              <td>Government scheme notification, press release from MHI/MoRTH</td>
+            </tr>
+            <tr>
+              <td><strong>Tendered</strong></td>
+              <td>A formal RFQ/RFP/tender has been issued for bus procurement or operations.</td>
+              <td>Tender document from official portal (CESL, GeM, state STU)</td>
+            </tr>
+            <tr>
+              <td><strong>Awarded</strong></td>
+              <td>A bus operator or OEM has been selected via bid evaluation. Award announced publicly.</td>
+              <td>Official award notification or OEM BSE disclosure</td>
+            </tr>
+            <tr>
+              <td><strong>LoA Issued</strong></td>
+              <td>Letter of Award issued to the winning bidder.</td>
+              <td>BSE disclosure, press release, or tender portal update</td>
+            </tr>
+            <tr>
+              <td><strong>Delivered</strong></td>
+              <td>Buses physically handed over to the operator at a depot.</td>
+              <td>OEM press release, government handover event, or operator confirmation</td>
+            </tr>
+            <tr>
+              <td><strong>Registered</strong></td>
+              <td>Buses registered with the state RTO and visible in Vahan database.</td>
+              <td>Vahan data</td>
+            </tr>
+            <tr>
+              <td><strong>Operational</strong></td>
+              <td>Buses in service on public routes, confirmed by operator or credible source.</td>
+              <td>Operator press release, media coverage with specifics, government report</td>
+            </tr>
+            <tr>
+              <td><strong>Cancelled</strong></td>
+              <td>Tender, order, or deployment officially cancelled.</td>
+              <td>Official tender portal update or OEM disclosure</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top:12px;">
+          Records in this tracker only use "operational" when that stage is confirmed.
+          Most deployment data reflects "delivered" or "registered" status.
+          Unconfirmed stages are labelled with their confidence level.
+        </p>
+      </div>
+
+      <!-- Tender Status Logic -->
+      <div id="status" class="section">
+        <h2>4. Tender Status Logic</h2>
+        <p>Tender statuses are computed as follows:</p>
+        <ul>
+          <li><strong>Open:</strong> Bid deadline is in the future and no award or cancellation is recorded.</li>
+          <li><strong>Closing Soon:</strong> Bid deadline is within 7 days.</li>
+          <li><strong>Extended:</strong> A corrigendum has extended the original bid deadline — confirmed by source.</li>
+          <li><strong>Needs Review:</strong> Bid deadline has passed but no award, extension, or cancellation is recorded. This does not mean the tender is invalid — it may have been extended without public notice yet.</li>
+          <li><strong>Awarded:</strong> Award data confirmed from official source or OEM disclosure.</li>
+          <li><strong>Cancelled:</strong> Cancellation confirmed from official source.</li>
+          <li><strong>Closed:</strong> Bid deadline passed and the process is confirmed complete (no award made public).</li>
+        </ul>
+        <p>
+          <strong>Expired tenders are never shown as Open.</strong> If a bid deadline has passed
+          without confirmed extension, the status is set to Needs Review — not Open.
+        </p>
+      </div>
+
+      <!-- Confidence -->
+      <div id="confidence" class="section">
+        <h2>5. Confidence Scores</h2>
+        <p>
+          Every record carries a confidence label. This reflects how reliable the underlying
+          source data is — not whether the event happened. A low-confidence record may be accurate;
+          it just came from a source that was harder to verify.
+        </p>
+        <div class="conf-grid">
+          <div class="conf-card conf-high">
+            <div class="conf-label">High</div>
+            <p>Official source (government portal, stock exchange filing, tender PDF). Data is specific, recent, and directly verifiable.</p>
+          </div>
+          <div class="conf-card conf-medium">
+            <div class="conf-label">Medium</div>
+            <p>Credible secondary source (trade press, OEM press release, annual report). Some interpretation required or cross-verification pending.</p>
+          </div>
+          <div class="conf-card conf-low">
+            <div class="conf-label">Low</div>
+            <p>Indirect source, incomplete data, or unverified inference. Use with caution — check original source before relying on this data.</p>
+          </div>
+          <div class="conf-card conf-unknown">
+            <div class="conf-label">Unknown</div>
+            <p>Source not yet reviewed or not publicly available. Field value may be estimated or derived.</p>
+          </div>
+        </div>
+        <p style="margin-top:16px;">
+          Confidence scores (0–100) are also assigned where possible.
+          These are heuristic — they do not represent statistical certainty.
+          A score of 85 means the record is likely accurate based on source quality and recency.
+        </p>
+      </div>
+
+      <!-- Limitations -->
+      <div id="limitations" class="section">
+        <h2>6. Limitations</h2>
+        <ul>
+          <li>This tracker covers publicly available data only. Confidential terms, LOA amounts, or undisclosed extensions will not appear.</li>
+          <li>Vahan registration data has a known delay of 1–2 months. Registration counts may undercount fleets that register in batches.</li>
+          <li>Deployment data relies on public disclosures. Not all cities with e-buses have made public announcements.</li>
+          <li>State STU tender portals are not uniformly scraped. Only CESL is automated. Other tenders are added manually as discovered.</li>
+          <li>OEM bus counts are "known deployed" from public sources — actual fleet sizes may differ from total produced or registered.</li>
+          <li>Corrigenda and deadline extensions are sometimes published only on tender portals without press coverage. Check source portals for latest status before making decisions.</li>
+        </ul>
+      </div>
+
+      <!-- Disclaimer -->
+      <div id="disclaimer" class="section">
+        <h2>7. Disclaimer</h2>
+        <div class="disclaimer-box">
+          <strong>This tracker uses public sources only.</strong> Data may contain delays or errors.
+          Always verify against original source documents before commercial decisions —
+          including bidding on tenders, making investments, or entering into supply agreements.
+          <br /><br />
+          <strong>Not affiliated</strong> with any government agency, OEM, STU, bus operator,
+          charging company, or employer. Any similarities to proprietary research are coincidental.
+          <br /><br />
+          The maintainer of this tracker is a private individual. Data is provided as-is, with no
+          warranty of accuracy or completeness. The tracker is not responsible for any decisions
+          made based on data published here.
+        </div>
+      </div>
+
+      <!-- Contact -->
+      <div class="section" style="text-align:center;">
+        <p style="margin-bottom:16px;">
+          Found a data error? Know of a tender not listed? Contact us to improve the data quality.
+        </p>
+        <a href="/subscribe/" class="btn btn-primary">Subscribe to weekly digest</a>
+      </div>
+
+    </div>
+  </div>
+</Layout>

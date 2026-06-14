@@ -1,0 +1,189 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
+import states from '../../data/states.json';
+import deployments from '../../data/deployments.json';
+import organizations from '../../data/organizations.json';
+
+const oems = organizations.filter(o => o.org_type === 'oem');
+const totalKnownBuses = states.reduce((s, st) => s + (st.known_operational || 0), 0);
+const stateCount = states.length;
+---
+<Layout
+  title="India Electric Bus States Directory | State-wise Procurement & Deployment"
+  description="State-wise electric bus data for India — known operational buses, tendered, active OEMs, and procurement schemes by state. Updated from public sources."
+>
+  <style>
+    .page-hero {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 36px 24px 28px;
+    }
+    .page-hero h1 { font-size: clamp(20px,4vw,30px); font-weight: 700; margin-bottom: 8px; }
+    .page-hero p { font-size: 14px; color: var(--gray-500); max-width: 600px; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+    .summary-bar {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+    }
+    .summary-chip {
+      background: white; border: 1px solid var(--gray-200); border-radius: 10px;
+      padding: 12px 20px; min-width: 140px; flex: 1; max-width: 200px;
+    }
+    .summary-chip .num { font-size: 24px; font-weight: 700; color: var(--gray-900); }
+    .summary-chip .lbl { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+    .states-table-wrap { overflow-x: auto; }
+    .states-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .states-table th {
+      font-size: 11px; font-weight: 600; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: .5px;
+      padding: 10px 16px; text-align: left;
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+      white-space: nowrap;
+    }
+    .states-table td { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    .states-table tr:last-child td { border-bottom: none; }
+    .states-table tr:hover td { background: var(--gray-50); }
+    .states-table .num { text-align: right; font-weight: 600; }
+    .states-table .num.green { color: var(--green); }
+    .states-table .num.amber { color: var(--amber); }
+    .states-table .na { color: var(--gray-300); text-align: right; }
+
+    .oem-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+    .oem-chip-sm {
+      font-size: 11px; background: var(--green-light); color: var(--green-dark);
+      padding: 1px 7px; border-radius: 99px; font-weight: 500; white-space: nowrap;
+    }
+
+    .region-header {
+      padding: 8px 16px; background: var(--gray-100); font-size: 11px;
+      font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .8px;
+    }
+
+    .info-note {
+      font-size: 12px; color: var(--gray-400); margin-top: 4px;
+    }
+
+    .pro-section {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden;
+      margin-top: 24px;
+    }
+    .pro-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .pro-header h2 { font-size: 14px; font-weight: 600; }
+    .pro-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--purple-light); color: var(--purple); }
+    .pro-body {
+      padding: 32px 24px; text-align: center;
+      background: repeating-linear-gradient(45deg,var(--gray-50),var(--gray-50) 8px,var(--gray-100) 8px,var(--gray-100) 16px);
+    }
+    .pro-body p { font-size: 13px; color: var(--gray-500); max-width: 340px; margin: 0 auto; }
+  </style>
+
+  <div class="page-hero">
+    <div style="max-width:1100px;margin:0 auto">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;font-weight:500;text-transform:uppercase;letter-spacing:.5px">
+        States
+      </div>
+      <h1>State-wise E-Bus Procurement &amp; Deployment</h1>
+      <p>State-level summary of India's electric bus buildout — known operational buses, active tenders, and OEM presence. Data from public sources.</p>
+      <div class="badges">
+        <span class="tag tag-green">{stateCount} states tracked</span>
+        <span class="tag tag-amber">Confidence: medium — public sources only</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <div class="summary-bar">
+      <div class="summary-chip">
+        <div class="num">{stateCount}</div>
+        <div class="lbl">States with known activity</div>
+      </div>
+      <div class="summary-chip">
+        <div class="num">{totalKnownBuses.toLocaleString('en-IN')}+</div>
+        <div class="lbl">Known operational buses</div>
+      </div>
+      <div class="summary-chip">
+        <div class="num">{oems.length}</div>
+        <div class="lbl">OEMs tracked</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>State Directory</h2>
+        <span class="pill">{stateCount} states</span>
+      </div>
+      <div class="states-table-wrap">
+        <table class="states-table">
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>Region</th>
+              <th style="text-align:right">Known Operational</th>
+              <th style="text-align:right">Tendered</th>
+              <th>Active OEMs</th>
+              <th>Key Scheme</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            {states.sort((a, b) => (b.known_operational || 0) - (a.known_operational || 0)).map(st => (
+              <tr>
+                <td><strong>{st.name}</strong></td>
+                <td><span class="tag tag-gray">{st.region}</span></td>
+                <td class="num green">{(st.known_operational || 0).toLocaleString('en-IN')}</td>
+                <td class={st.tendered != null ? 'num amber' : 'na'}>
+                  {st.tendered != null ? st.tendered.toLocaleString('en-IN') : '—'}
+                </td>
+                <td>
+                  <div class="oem-chips">
+                    {st.active_oem_slugs.map(slug => {
+                      const oem = oems.find(o => o.slug === slug);
+                      return oem ? <span class="oem-chip-sm">{oem.name.replace(' Greentech','').replace(' Motors','').replace(' Auto','')}</span> : null;
+                    })}
+                  </div>
+                </td>
+                <td style="font-size:12px;color:var(--gray-600)">{st.key_scheme}</td>
+                <td><ConfidenceBadge label={st.confidence_label} /></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" style="font-weight:600;padding:10px 16px">Total (known)</td>
+              <td class="num green" style="font-weight:700;padding:10px 16px">{totalKnownBuses.toLocaleString('en-IN')}+</td>
+              <td colspan="4" style="padding:10px 16px;font-size:12px;color:var(--gray-400)">Partial data — not all states with e-buses are listed</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div style="margin-top:16px;font-size:12px;color:var(--gray-400);line-height:1.7">
+      <strong>Notes:</strong> "Known Operational" is derived from public disclosures, annual reports, and press releases.
+      Actual deployed fleet may be higher. "Tendered" is buses confirmed under active or recent tenders for that state.
+      States not listed may have e-bus activity that has not been publicly disclosed or tracked yet.
+      <a href="/methodology/" style="color:var(--blue)">Methodology →</a>
+    </div>
+
+    <!-- Pro placeholder -->
+    <div class="pro-section">
+      <div class="pro-header">
+        <h2>State Detail Pages</h2>
+        <span class="pro-badge">Coming soon</span>
+      </div>
+      <div class="pro-body">
+        <p>
+          Individual state pages with full procurement pipeline, tender history, OEM presence,
+          charging infra map, and operator activity — coming in a future update.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</Layout>

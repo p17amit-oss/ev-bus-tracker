@@ -1,0 +1,221 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
+import charging from '../../data/charging_infra.json';
+import tenders from '../../data/tenders.json';
+---
+<Layout
+  title="Electric Bus Charging Infrastructure Tracker India | Depot & Charger Tenders"
+  description="Track electric bus charging and depot infrastructure projects across India — scope, bundling, opportunity type, and source. CESL GCC and state STU projects."
+>
+  <style>
+    .page-hero {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 36px 24px 28px;
+    }
+    .page-hero h1 { font-size: clamp(20px,4vw,30px); font-weight: 700; margin-bottom: 8px; }
+    .page-hero p { font-size: 14px; color: var(--gray-500); max-width: 640px; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+    .insight-box {
+      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius);
+      padding: 14px 18px; font-size: 13px; color: var(--green-dark); line-height: 1.6;
+    }
+
+    .project-card {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+      overflow: hidden; margin-bottom: 16px;
+    }
+    .project-card:last-child { margin-bottom: 0; }
+    .project-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    }
+    .project-title { font-size: 15px; font-weight: 600; line-height: 1.4; }
+    .project-link { font-size: 12px; color: var(--blue); text-decoration: none; display: block; margin-top: 3px; }
+    .project-link:hover { text-decoration: underline; }
+    .badge-row { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+
+    .fields-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0;
+    }
+    .field-cell {
+      padding: 12px 20px; border-right: 1px solid var(--gray-100); border-bottom: 1px solid var(--gray-100);
+    }
+    .field-cell:nth-child(even) { border-right: none; }
+    @media (min-width: 700px) {
+      .fields-grid { grid-template-columns: repeat(3, 1fr); }
+      .field-cell:nth-child(3n) { border-right: none; }
+      .field-cell:nth-child(even) { border-right: 1px solid var(--gray-100); }
+    }
+    .field-label { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+    .field-value { font-size: 13px; color: var(--gray-900); line-height: 1.4; }
+    .field-value.muted { color: var(--gray-400); font-style: italic; }
+
+    .notes-section {
+      padding: 12px 20px; font-size: 13px; color: var(--gray-600); background: var(--gray-50);
+      border-top: 1px solid var(--gray-100); line-height: 1.6;
+    }
+
+    .source-row {
+      padding: 10px 20px; display: flex; align-items: center; gap: 8px;
+      border-top: 1px solid var(--gray-100); font-size: 12px; color: var(--gray-400);
+    }
+
+    .pro-section {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .pro-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .pro-header h2 { font-size: 14px; font-weight: 600; }
+    .pro-header .pro-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--purple-light); color: var(--purple); }
+    .pro-body {
+      padding: 32px 24px; text-align: center;
+      background: repeating-linear-gradient(45deg,var(--gray-50),var(--gray-50) 8px,var(--gray-100) 8px,var(--gray-100) 16px);
+    }
+    .pro-body .icon { font-size: 32px; margin-bottom: 12px; }
+    .pro-body h3 { font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+    .pro-body p { font-size: 13px; color: var(--gray-500); max-width: 300px; margin: 0 auto; }
+  </style>
+
+  <div class="page-hero">
+    <div style="max-width:1100px;margin:0 auto">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;font-weight:500;text-transform:uppercase;letter-spacing:.5px">
+        Charging Infra
+      </div>
+      <h1>Electric Bus Charging Infrastructure</h1>
+      <p>Charging and depot infra projects across India — scope, bundling with bus tenders, and opportunity type for CPOs, EPCs, and charger OEMs.</p>
+      <div class="badges">
+        <span class="tag tag-green">{charging.length} projects tracked</span>
+        <span class="tag tag-gray">Source: CESL tender documents</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <div class="insight-box">
+        <strong>Bundled infra note:</strong> Under the GCC (Gross Cost Contract) model used in PM e-Bus Sewa and PM E-DRIVE,
+        charging and depot civil infrastructure is the responsibility of the bus operator — not separately tendered.
+        This creates sub-contracting opportunities for CPOs, EPCs, and charger OEMs working with winning bus operators.
+      </div>
+
+      <!-- Project cards -->
+      {charging.map((p) => {
+        const linkedTender = tenders.find(t => t.id === p.tender_id);
+        return (
+          <div class="project-card">
+            <div class="project-header">
+              <div>
+                <div class="project-title">{p.project_name}</div>
+                {linkedTender && (
+                  <a class="project-link" href={`/tenders/${linkedTender.slug}/`}>
+                    → Linked tender: {linkedTender.title.slice(0, 70)}...
+                  </a>
+                )}
+              </div>
+              <div class="badge-row">
+                <StatusBadge status={p.status} />
+                <ConfidenceBadge label={p.confidence_label} score={p.confidence_score} />
+              </div>
+            </div>
+
+            <div class="fields-grid">
+              <div class="field-cell">
+                <div class="field-label">State / City</div>
+                <div class="field-value">{p.state ?? '—'}{p.city ? `, ${p.city}` : ''}</div>
+              </div>
+              <div class="field-cell">
+                <div class="field-label">Linked Buses</div>
+                <div class="field-value">{p.bus_count_linked != null ? p.bus_count_linked.toLocaleString('en-IN') : '—'}</div>
+              </div>
+              <div class="field-cell">
+                <div class="field-label">Bundled with Bus Tender</div>
+                <div class="field-value">
+                  {p.bundled_with_bus_tender === true
+                    ? <span class="tag tag-green">Yes — GCC model</span>
+                    : p.bundled_with_bus_tender === false
+                    ? <span class="tag tag-red">No — separate</span>
+                    : <span class="tag tag-gray">Unclear</span>
+                  }
+                </div>
+              </div>
+              <div class="field-cell">
+                <div class="field-label">Charger Count</div>
+                <div class={`field-value${p.charger_count == null ? ' muted' : ''}`}>
+                  {p.charger_count ?? 'Not specified'}
+                </div>
+              </div>
+              <div class="field-cell">
+                <div class="field-label">Charger Capacity</div>
+                <div class={`field-value${p.charger_capacity_kw == null ? ' muted' : ''}`}>
+                  {p.charger_capacity_kw != null ? `${p.charger_capacity_kw} kW` : 'Not specified'}
+                </div>
+              </div>
+              <div class="field-cell">
+                <div class="field-label">Opportunity For</div>
+                <div class="field-value">{p.opportunity_type}</div>
+              </div>
+              <div class="field-cell" style="grid-column: 1 / -1">
+                <div class="field-label">Scope</div>
+                <div class="field-value">{p.scope}</div>
+              </div>
+            </div>
+
+            {p.notes && (
+              <div class="notes-section">
+                <strong>Note:</strong> {p.notes}
+              </div>
+            )}
+
+            <div class="source-row">
+              <span>Source:</span>
+              {p.source_url ? (
+                <a href={p.source_url} target="_blank" rel="noopener" class="source-chip">
+                  🔗 {p.source_name}
+                </a>
+              ) : (
+                <span class="source-chip">{p.source_name}</span>
+              )}
+              <span>·</span>
+              <span>Last checked: {p.last_checked_at}</span>
+            </div>
+          </div>
+        );
+      })}
+
+      {charging.length === 0 && (
+        <div class="empty-state">
+          <div class="es-icon">⚡</div>
+          <h3>No charging projects tracked yet</h3>
+          <p>Charging infra data will appear here as projects are added from public tender portals.</p>
+        </div>
+      )}
+
+      <!-- Pro placeholder -->
+      <div class="pro-section">
+        <div class="pro-header">
+          <h2>Charging Infra Opportunity Score</h2>
+          <span class="pro-badge">Coming soon</span>
+        </div>
+        <div class="pro-body">
+          <div class="icon">🔒</div>
+          <h3>Opportunity scoring for CPOs &amp; EPCs</h3>
+          <p>Ranked scoring of charging opportunities by bus count, timeline, and scope — for CPOs, EPCs, and charger OEMs evaluating the pipeline.</p>
+        </div>
+      </div>
+
+      <!-- Methodology note -->
+      <div style="font-size:13px;color:var(--gray-500);padding:0 4px">
+        Data sourced from CESL tender documents and official portals only. Charging infra details are
+        extracted from bus tender RFQ/RFP documents. Scope and charger specifications vary by depot allocation.
+        <a href="/methodology/" style="color:var(--blue)">Full methodology →</a>
+      </div>
+
+    </div>
+  </div>
+</Layout>

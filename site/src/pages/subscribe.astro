@@ -1,91 +1,262 @@
 ---
+import Layout from '../layouts/Layout.astro';
 ---
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Subscribe — India EV Bus Digest</title>
-    <meta name="description" content="Weekly email digest of India's electric bus market — tenders, OEM orders, and registration data. Free." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      :root {
-        --green: #16a34a; --green-light: #dcfce7; --green-dark: #14532d;
-        --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
-        --gray-500: #6b7280; --gray-900: #111827;
-      }
-      body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; display: flex; flex-direction: column; }
-      nav {
-        background: white; border-bottom: 1px solid var(--gray-200);
-        padding: 0 24px; display: flex; align-items: center; height: 56px;
-      }
-      .nav-brand { font-weight: 700; font-size: 15px; color: var(--green-dark); text-decoration: none; }
-      .main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
-      .card {
-        background: white; border-radius: 16px; border: 1px solid var(--gray-200);
-        box-shadow: 0 4px 24px rgba(0,0,0,.08); padding: 48px 40px;
-        max-width: 480px; width: 100%; text-align: center;
-      }
-      .icon { font-size: 48px; margin-bottom: 16px; }
-      h1 { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
-      .sub { font-size: 15px; color: var(--gray-500); margin-bottom: 32px; line-height: 1.6; }
-      .perks { text-align: left; margin-bottom: 32px; display: flex; flex-direction: column; gap: 10px; }
-      .perk { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; }
-      .perk-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+<Layout
+  title="Subscribe to India EV Bus Tracker | Tender Alerts & Market Updates"
+  description="Get notified when new electric bus tenders are published, status changes are detected, or major market events occur. Public-source intelligence, free tier available."
+>
+  <style>
+    .sub-hero {
+      background: var(--gray-900); color: white;
+      padding: 52px 24px 40px;
+    }
+    .sub-hero-inner { max-width: 640px; margin: 0 auto; text-align: center; }
+    .sub-hero h1 { font-size: clamp(22px,4vw,34px); font-weight: 700; margin-bottom: 12px; }
+    .sub-hero p { font-size: 15px; color: #9ca3af; line-height: 1.7; }
 
-      /* Buttondown embed form */
-      .bd-form { display: flex; flex-direction: column; gap: 12px; }
-      .bd-form input[type="email"] {
-        width: 100%; padding: 12px 16px; font-size: 15px;
-        border: 1.5px solid var(--gray-200); border-radius: 8px;
-        font-family: inherit; outline: none;
-        transition: border-color .15s;
-      }
-      .bd-form input[type="email"]:focus { border-color: var(--green); }
-      .bd-form button {
-        width: 100%; padding: 13px; font-size: 15px; font-weight: 600;
-        background: var(--green); color: white; border: none; border-radius: 8px;
-        cursor: pointer; font-family: inherit; transition: background .15s;
-      }
-      .bd-form button:hover { background: var(--green-dark); }
-      .fine-print { font-size: 12px; color: var(--gray-500); margin-top: 12px; }
+    .form-card {
+      max-width: 620px; margin: 32px auto;
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
 
-      footer { padding: 24px; text-align: center; font-size: 13px; color: var(--gray-500); }
-    </style>
-  </head>
-  <body>
-    <nav><a class="nav-brand" href="/">🚌 EV Bus Tracker</a></nav>
-    <div class="main">
-      <div class="card">
-        <div class="icon">⚡</div>
-        <h1>India EV Bus Digest</h1>
-        <p class="sub">
-          Every Monday — new tenders, OEM order disclosures,
-          and Vahan registration data in your inbox.
-        </p>
-        <div class="perks">
-          <div class="perk"><span class="perk-icon">📋</span><span>Live tenders from CESL and state STUs — with bus counts and deadlines</span></div>
-          <div class="perk"><span class="perk-icon">📢</span><span>BSE order disclosures filtered for e-bus signals — no noise</span></div>
-          <div class="perk"><span class="perk-icon">📊</span><span>Monthly Vahan registration snapshot by maker</span></div>
-          <div class="perk"><span class="perk-icon">🆓</span><span>Free. No spam. Unsubscribe any time.</span></div>
-        </div>
+    .form-section {
+      padding: 24px 28px; border-bottom: 1px solid var(--gray-100);
+    }
+    .form-section:last-child { border-bottom: none; }
+    .form-section h2 { font-size: 13px; font-weight: 700; color: var(--gray-900); margin-bottom: 14px; letter-spacing: .2px; }
 
-        <!-- Replace YOUR_BUTTONDOWN_USERNAME below after you create your account -->
-        <form
-          action="https://buttondown.com/YOUR_BUTTONDOWN_USERNAME/api/emails/embed-subscribe/YOUR_BUTTONDOWN_USERNAME"
-          method="post"
-          target="popupwindow"
-          onsubmit="window.open('https://buttondown.com/YOUR_BUTTONDOWN_USERNAME', 'popupwindow')"
-          class="bd-form"
-        >
-          <input type="email" name="email" placeholder="you@example.com" required />
-          <input type="hidden" name="tag" value="ev-bus-tracker-site" />
-          <button type="submit">Subscribe — it's free</button>
-        </form>
-        <p class="fine-print">Sent every Monday morning. Unsubscribe in one click.</p>
-      </div>
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 5px; }
+    .field input, .field select {
+      width: 100%; font-size: 14px; padding: 9px 12px;
+      border: 1px solid var(--gray-300); border-radius: var(--radius);
+      font-family: var(--font); background: white; color: var(--gray-900);
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .field input:focus, .field select:focus { border-color: var(--green); }
+    .field input[type="email"] { font-size: 15px; padding: 10px 14px; }
+    .field.opt label { color: var(--gray-400); font-style: italic; }
+
+    /* Interest checkboxes */
+    .interest-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .interest-item {
+      display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
+      background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius);
+      padding: 10px 12px; transition: border-color .12s, background .12s;
+    }
+    .interest-item:has(input:checked) {
+      border-color: var(--green); background: #f0fdf4;
+    }
+    .interest-item input[type="checkbox"] {
+      margin-top: 2px; width: auto; flex-shrink: 0; accent-color: var(--green);
+    }
+    .interest-item .il { font-size: 13px; font-weight: 500; color: var(--gray-800); }
+    .interest-item .is { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+
+    /* Frequency */
+    .freq-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .freq-option {
+      display: flex; align-items: center; gap: 7px; cursor: pointer;
+      background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius);
+      padding: 8px 14px; flex: 1; min-width: 100px; transition: border-color .12s, background .12s;
+    }
+    .freq-option:has(input:checked) {
+      border-color: var(--green); background: #f0fdf4;
+    }
+    .freq-option input[type="radio"] { accent-color: var(--green); }
+    .freq-option span { font-size: 13px; font-weight: 500; }
+
+    /* Submit */
+    .submit-wrap { text-align: center; padding: 20px 28px; }
+    .submit-btn {
+      background: var(--green); color: white;
+      border: none; border-radius: var(--radius); font-family: var(--font);
+      font-size: 14px; font-weight: 700; padding: 12px 32px;
+      cursor: pointer; transition: background .15s; width: 100%;
+    }
+    .submit-btn:hover { background: var(--green-dark); }
+    .sub-disclaimer {
+      font-size: 11px; color: var(--gray-400); margin-top: 10px; line-height: 1.6;
+    }
+
+    /* Paid tier note */
+    .paid-note {
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg); padding: 18px 20px; margin-top: 20px;
+    }
+    .paid-note h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--gray-700); }
+    .paid-note ul { padding-left: 18px; margin: 0; }
+    .paid-note ul li { font-size: 13px; color: var(--gray-600); margin-bottom: 4px; }
+    .paid-note .soon { font-size: 11px; background: var(--gray-200); color: var(--gray-500); border-radius: 99px; padding: 1px 7px; margin-left: 6px; font-weight: 600; }
+
+    .container-sm { max-width: 680px; margin: 0 auto; padding: 0 16px 48px; }
+
+    @media (max-width: 520px) {
+      .interest-grid { grid-template-columns: 1fr; }
+      .freq-row { flex-direction: column; }
+    }
+  </style>
+
+  <div class="sub-hero">
+    <div class="sub-hero-inner">
+      <h1>Stay ahead of the e-bus market</h1>
+      <p>Get notified when new tenders are published, deadlines shift, or major orders are confirmed. Public-source intelligence, no noise.</p>
     </div>
-    <footer>India EV Bus Tracker · Data from public sources · Updated daily</footer>
-  </body>
-</html>
+  </div>
+
+  <div class="container-sm">
+    <div class="form-card">
+
+      <!-- Email -->
+      <div class="form-section">
+        <h2>Your email</h2>
+        <div class="field">
+          <label for="sub-email">Email address</label>
+          <input id="sub-email" type="email" placeholder="you@company.com" autocomplete="email" />
+        </div>
+      </div>
+
+      <!-- Interests -->
+      <div class="form-section">
+        <h2>What would you like to track?</h2>
+        <div class="interest-grid">
+          <label class="interest-item">
+            <input type="checkbox" name="interest" value="tenders" checked />
+            <div>
+              <div class="il">New tenders</div>
+              <div class="is">When new tenders are added</div>
+            </div>
+          </label>
+          <label class="interest-item">
+            <input type="checkbox" name="interest" value="oem_activity" />
+            <div>
+              <div class="il">OEM order disclosures</div>
+              <div class="is">BSE filings, LOAs, order wins</div>
+            </div>
+          </label>
+          <label class="interest-item">
+            <input type="checkbox" name="interest" value="registrations" />
+            <div>
+              <div class="il">Registrations</div>
+              <div class="is">Vahan registration data (soon)</div>
+            </div>
+          </label>
+          <label class="interest-item">
+            <input type="checkbox" name="interest" value="charging_infra" />
+            <div>
+              <div class="il">Charging infrastructure</div>
+              <div class="is">New projects and milestones</div>
+            </div>
+          </label>
+          <label class="interest-item">
+            <input type="checkbox" name="interest" value="state_procurement" />
+            <div>
+              <div class="il">State procurement</div>
+              <div class="is">STU tender and award news</div>
+            </div>
+          </label>
+          <label class="interest-item">
+            <input type="checkbox" name="interest" value="market_intel" />
+            <div>
+              <div class="il">Market intelligence</div>
+              <div class="is">Policy, GCC economics, supply chain</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Frequency -->
+      <div class="form-section">
+        <h2>How often?</h2>
+        <div class="freq-row">
+          <label class="freq-option">
+            <input type="radio" name="frequency" value="realtime" />
+            <span>As it happens</span>
+          </label>
+          <label class="freq-option">
+            <input type="radio" name="frequency" value="weekly" checked />
+            <span>Weekly digest</span>
+          </label>
+          <label class="freq-option">
+            <input type="radio" name="frequency" value="monthly" />
+            <span>Monthly roundup</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Optional context -->
+      <div class="form-section">
+        <h2>Optional context</h2>
+        <div class="field opt">
+          <label for="sub-role">Your role (helps us understand who uses this)</label>
+          <select id="sub-role" name="role">
+            <option value="">Select…</option>
+            <option value="investor">Investor / VC / PE</option>
+            <option value="oem">OEM / Manufacturer</option>
+            <option value="operator">Bus operator / STU</option>
+            <option value="financer">Financier / Leasing</option>
+            <option value="consultant">Consultant / Advisory</option>
+            <option value="infra">Charging infra / EPC</option>
+            <option value="researcher">Researcher / Think tank</option>
+            <option value="journalist">Journalist / Media</option>
+            <option value="government">Government official</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field opt">
+          <label for="sub-org">Company / Organisation (optional)</label>
+          <input id="sub-org" type="text" name="org" placeholder="Optional" autocomplete="organization" />
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="submit-wrap">
+        <button class="submit-btn" id="sub-btn" type="button">Subscribe — it's free</button>
+        <p class="sub-disclaimer">
+          No spam. Unsubscribe any time. This tracker uses public data only and is not affiliated with any government agency, OEM, or employer.
+          Your email is used solely to send these notifications.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Paid tier coming -->
+    <div class="paid-note">
+      <h3>Paid tier — coming later</h3>
+      <ul>
+        <li>Tender briefing memos (PDF) <span class="soon">Soon</span></li>
+        <li>CSV / Excel export <span class="soon">Soon</span></li>
+        <li>OEM watchlist with disclosure alerts <span class="soon">Soon</span></li>
+        <li>GCC economics model <span class="soon">Soon</span></li>
+        <li>State comparison and tender pipeline view <span class="soon">Soon</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('sub-btn')?.addEventListener('click', () => {
+      const email = (document.getElementById('sub-email') as HTMLInputElement).value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email address.');
+        return;
+      }
+      const interests = Array.from(
+        document.querySelectorAll<HTMLInputElement>('input[name="interest"]:checked')
+      ).map(el => el.value);
+      const frequency = (document.querySelector<HTMLInputElement>('input[name="frequency"]:checked'))?.value ?? 'weekly';
+      const role = (document.getElementById('sub-role') as HTMLSelectElement).value;
+      const org  = (document.getElementById('sub-org')  as HTMLInputElement).value.trim();
+
+      /* Placeholder — no backend yet. Show confirmation UI. */
+      const btn = document.getElementById('sub-btn')!;
+      btn.textContent = 'Subscribed — thank you!';
+      btn.style.background = '#16a34a';
+      btn.disabled = true;
+
+      console.info('[subscribe]', { email, interests, frequency, role, org });
+    });
+  </script>
+</Layout>

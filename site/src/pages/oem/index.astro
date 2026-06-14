@@ -1,89 +1,152 @@
 ---
+import Layout from '../../layouts/Layout.astro';
+import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
 import organizations from '../../data/organizations.json';
 import tenders from '../../data/tenders.json';
+import deployments from '../../data/deployments.json';
 
-const oems = organizations.filter((o) => o.org_type === 'oem');
+const oems = organizations.filter(o => o.org_type === 'oem');
 
-function openTenderCount(org) {
-  return tenders.filter(
-    (t) => ['open','extended','announced'].includes(t.status) &&
-           (t.issuing_org_id === org.id || t.issuer_slug === org.slug)
-  ).length;
+const BUILD_DATE = new Date('2026-06-14');
+function effectiveStatus(t: any): string {
+  const declared = (t.status as string) ?? 'unknown';
+  if (declared === 'awarded' || declared === 'cancelled') return declared;
+  const dl: string | null = t.bid_deadline ?? t.bid_due_date ?? null;
+  if (!dl) return declared || 'unknown';
+  const diffDays = Math.ceil((new Date(dl).getTime() - BUILD_DATE.getTime()) / 864e5);
+  if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
+  return diffDays <= 7 ? 'closing_soon' : 'open';
 }
----
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Electric Bus OEMs in India — Orders, Tenders & Market Share</title>
-    <meta name="description" content="Track all major Indian electric bus manufacturers: Olectra, JBM, Tata Motors, Ashok Leyland and more — orders, tenders, and city deployments." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      :root {
-        --green: #16a34a; --green-light: #dcfce7; --green-dark: #14532d;
-        --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
-        --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827;
-        --radius: 12px;
-      }
-      body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-900); line-height: 1.6; }
-      nav {
-        background: white; border-bottom: 1px solid var(--gray-200);
-        padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 56px;
-        position: sticky; top: 0; z-index: 10;
-      }
-      .nav-brand { font-weight: 700; font-size: 15px; color: var(--green-dark); text-decoration: none; }
-      .hero {
-        background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
-        color: white; padding: 48px 24px 40px; text-align: center;
-      }
-      .hero h1 { font-size: clamp(22px, 4vw, 34px); font-weight: 700; margin-bottom: 10px; }
-      .hero p { font-size: 16px; opacity: .8; max-width: 500px; margin: 0 auto; }
-      .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
-      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-      .oem-card {
-        background: white; border-radius: var(--radius); border: 1px solid var(--gray-200);
-        padding: 24px; text-decoration: none; color: inherit;
-        transition: box-shadow .15s, border-color .15s;
-        display: flex; flex-direction: column; gap: 12px;
-      }
-      .oem-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); border-color: var(--green); }
-      .oem-name { font-size: 16px; font-weight: 600; color: var(--gray-900); }
-      .oem-meta { display: flex; gap: 8px; flex-wrap: wrap; }
-      .tag { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 99px; }
-      .tag-green { background: var(--green-light); color: var(--green-dark); }
-      .tag-gray  { background: var(--gray-100); color: var(--gray-700); }
-      .arrow { margin-top: auto; font-size: 13px; color: var(--gray-500); }
-      footer { background: white; border-top: 1px solid var(--gray-200); padding: 24px; text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 40px; }
-    </style>
-  </head>
-  <body>
-    <nav>
-      <a class="nav-brand" href="/">🚌 EV Bus Tracker</a>
-    </nav>
-    <div class="hero">
+const oemCards = oems.map(o => {
+  const deps = deployments.filter(d => d.oem_name === o.name);
+  const totalDeployed = deps.reduce((s, d) => s + (d.bus_count ?? 0), 0);
+  const cities  = [...new Set(deps.map(d => d.city).filter(Boolean))]  as string[];
+  const openT   = tenders.filter(t =>
+    ['open','closing_soon'].includes(effectiveStatus(t)) &&
+    (t.issuing_org_id === o.id || t.issuer_slug === o.slug)
+  ).length;
+  return { ...o, totalDeployed, cities, openTenders: openT };
+}).sort((a, b) => b.totalDeployed - a.totalDeployed);
+---
+<Layout
+  title="Electric Bus OEMs in India | Orders, Deployments, Registrations"
+  description="Track all major Indian electric bus manufacturers — Olectra, JBM Auto, Tata Motors, Ashok Leyland, Switch Mobility. Known deployments, open tenders, and BSE disclosures."
+>
+  <style>
+    .page-hero {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 36px 24px 28px;
+    }
+    .page-hero h1 { font-size: clamp(20px,4vw,30px); font-weight: 700; margin-bottom: 8px; }
+    .page-hero p { font-size: 14px; color: var(--gray-500); max-width: 600px; }
+
+    .oem-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 16px;
+    }
+
+    .oem-card {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+      text-decoration: none; color: inherit; display: flex; flex-direction: column;
+      transition: border-color .15s, box-shadow .15s; overflow: hidden;
+    }
+    .oem-card:hover { border-color: var(--green); box-shadow: 0 3px 10px rgba(0,0,0,.07); }
+
+    .oem-head {
+      padding: 18px 20px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .oem-name { font-size: 15px; font-weight: 700; }
+    .listed-chip {
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+      text-transform: uppercase; letter-spacing: .4px;
+      background: var(--blue-light); color: var(--blue-dark);
+    }
+    .private-chip {
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+      text-transform: uppercase; letter-spacing: .4px;
+      background: var(--gray-100); color: var(--gray-500);
+    }
+
+    .oem-stats {
+      display: grid; grid-template-columns: 1fr 1fr; padding: 14px 20px; gap: 12px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .stat .num { font-size: 22px; font-weight: 700; color: var(--green); line-height: 1; }
+    .stat .num.zero { color: var(--gray-300); }
+    .stat .lbl { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    .oem-meta {
+      padding: 12px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1;
+    }
+    .city-row { display: flex; gap: 4px; flex-wrap: wrap; }
+    .city-chip { font-size: 11px; background: var(--gray-100); color: var(--gray-600); padding: 2px 8px; border-radius: 99px; }
+
+    .oem-footer {
+      padding: 10px 20px; border-top: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--gray-500);
+    }
+
+    .note { font-size: 12px; color: var(--gray-400); line-height: 1.6; margin-top: 16px; padding: 0 4px; }
+  </style>
+
+  <div class="page-hero">
+    <div style="max-width:1100px;margin:0 auto">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;font-weight:500;text-transform:uppercase;letter-spacing:.5px">OEMs</div>
       <h1>Electric Bus OEMs in India</h1>
-      <p>Orders, tenders, and deployments for every major manufacturer — updated daily.</p>
+      <p>Known deployments, open tenders, and BSE disclosure monitoring for each manufacturer. Data from public annual reports, filings, and press releases.</p>
     </div>
-    <div class="container">
-      <div class="grid">
-        {oems.map((org) => {
-          const open = openTenderCount(org);
-          return (
-            <a class="oem-card" href={`/oem/${org.slug}/`}>
-              <div class="oem-name">{org.name}</div>
-              <div class="oem-meta">
-                {open > 0 && <span class="tag tag-green">{open} open tender{open > 1 ? 's' : ''}</span>}
-                {org.bse_scrip_code && <span class="tag tag-gray">BSE: {org.bse_scrip_code}</span>}
+  </div>
+
+  <div class="container">
+    <div class="oem-grid">
+      {oemCards.map(o => {
+        const isListed = !!o.bse_scrip_code;
+        return (
+          <a class="oem-card" href={`/oem/${o.slug}/`}>
+            <div class="oem-head">
+              <div class="oem-name">{o.name}</div>
+              {isListed ? <span class="listed-chip">Listed</span> : <span class="private-chip">Private</span>}
+            </div>
+            <div class="oem-stats">
+              <div class="stat">
+                <div class={`num${o.totalDeployed === 0 ? ' zero' : ''}`}>
+                  {o.totalDeployed > 0 ? o.totalDeployed.toLocaleString('en-IN') : '—'}
+                </div>
+                <div class="lbl">buses known operational</div>
               </div>
-              <div class="arrow">View profile →</div>
-            </a>
-          );
-        })}
-      </div>
+              <div class="stat">
+                <div class={`num${o.cities.length === 0 ? ' zero' : ''}`}>{o.cities.length || '—'}</div>
+                <div class="lbl">cities tracked</div>
+              </div>
+            </div>
+            <div class="oem-meta">
+              {o.cities.length > 0 && (
+                <div class="city-row">
+                  {o.cities.slice(0,4).map(c => <span class="city-chip">{c}</span>)}
+                  {o.cities.length > 4 && <span class="city-chip">+{o.cities.length - 4}</span>}
+                </div>
+              )}
+              {o.openTenders > 0 && (
+                <span class="tag tag-green">{o.openTenders} open tender{o.openTenders > 1 ? 's' : ''}</span>
+              )}
+            </div>
+            <div class="oem-footer">
+              <div style="display:flex;gap:6px;align-items:center">
+                {o.bse_scrip_code && <span class="source-chip">BSE {o.bse_scrip_code}</span>}
+                <ConfidenceBadge label={o.totalDeployed > 0 ? 'medium' : 'unknown'} />
+              </div>
+              <span>View profile →</span>
+            </div>
+          </a>
+        );
+      })}
     </div>
-    <footer>Data from BSE disclosures and public tender portals. Updated daily.</footer>
-  </body>
-</html>
+    <div class="note">
+      <strong>Note:</strong> Bus counts shown are "known operational" from public annual reports, press releases, and tender documents.
+      Actual manufactured or registered fleet sizes may differ. Confidence: medium.
+      <a href="/methodology/" style="color:var(--blue)">Methodology →</a>
+    </div>
+  </div>
+</Layout>

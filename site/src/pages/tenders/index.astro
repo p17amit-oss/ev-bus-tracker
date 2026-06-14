@@ -1,0 +1,322 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
+import tenders from '../../data/tenders.json';
+
+const BUILD_DATE = new Date('2026-06-14');
+
+function effectiveStatus(t: any): string {
+  const declared = (t.status as string) ?? 'unknown';
+  if (declared === 'awarded' || declared === 'cancelled') return declared;
+  const dl: string | null = t.bid_deadline ?? t.bid_due_date ?? null;
+  if (!dl) return declared || 'unknown';
+  const deadline = new Date(dl);
+  const diffDays = Math.ceil((deadline.getTime() - BUILD_DATE.getTime()) / 864e5);
+  if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
+  if (diffDays <= 7) return 'closing_soon';
+  return 'open';
+}
+
+function daysLabel(dl: string | null): string {
+  if (!dl) return '—';
+  const d = new Date(dl);
+  const diff = Math.ceil((d.getTime() - BUILD_DATE.getTime()) / 864e5);
+  if (diff < 0) return `${Math.abs(diff)}d ago`;
+  if (diff === 0) return 'Today';
+  return `${diff}d left`;
+}
+
+const enriched = tenders.map(t => ({
+  ...t,
+  effStatus: effectiveStatus(t),
+  daysDelta: daysLabel(t.bid_deadline ?? t.bid_due_date ?? null),
+}));
+
+const schemes = [...new Set(tenders.map(t => t.scheme).filter(Boolean))];
+const models  = [...new Set(tenders.map(t => t.contract_model).filter(Boolean))];
+const openCount = enriched.filter(t => ['open','closing_soon'].includes(t.effStatus)).length;
+const totalBuses = enriched.filter(t => ['open','closing_soon'].includes(t.effStatus))
+  .reduce((s, t) => s + (t.bus_count ?? 0), 0);
+---
+<Layout
+  title="India Electric Bus Tenders Tracker | PM e-Bus Sewa, CESL, State Tenders"
+  description={`Track ${enriched.length} electric bus tenders in India — PM e-Bus Sewa, PM E-DRIVE, CESL, and state STU tenders. Live status, bus counts, deadlines, and source documents.`}
+>
+  <style>
+    .page-hero {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 36px 24px 28px;
+    }
+    .page-hero h1 { font-size: clamp(20px,4vw,30px); font-weight: 700; margin-bottom: 8px; }
+    .page-hero p { font-size: 14px; color: var(--gray-500); max-width: 620px; }
+
+    .filter-bar {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+      padding: 14px 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+      margin-bottom: 20px;
+    }
+    .filter-bar input, .filter-bar select {
+      font-size: 13px; padding: 7px 12px; border: 1px solid var(--gray-300);
+      border-radius: var(--radius); font-family: var(--font);
+      background: white; color: var(--gray-900); outline: none;
+      transition: border-color .15s;
+    }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: var(--green); }
+    .filter-bar input { flex: 1; min-width: 180px; }
+    .filter-bar select { min-width: 140px; }
+    .filter-bar .sep { color: var(--gray-300); }
+    .filter-count { font-size: 13px; color: var(--gray-500); margin-left: auto; white-space: nowrap; }
+
+    .export-btn {
+      font-size: 12px; font-weight: 600; padding: 7px 12px;
+      border: 1px solid var(--gray-300); border-radius: var(--radius);
+      background: white; color: var(--gray-700); cursor: pointer;
+      font-family: var(--font); transition: border-color .15s, background .15s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .export-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+
+    .table-wrap { overflow-x: auto; }
+    .tender-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .tender-table th {
+      font-size: 11px; font-weight: 600; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: .5px;
+      padding: 10px 14px; text-align: left;
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+      white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    .tender-table th:hover { color: var(--gray-900); }
+    .tender-table td { padding: 12px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+    .tender-table tr:last-child td { border-bottom: none; }
+    .tender-table tr:hover td { background: #fafafa; }
+    .tender-table tr[hidden] { display: none; }
+
+    .title-cell { max-width: 320px; }
+    .title-link {
+      font-size: 13px; font-weight: 500; color: var(--gray-900);
+      text-decoration: none; line-height: 1.4; display: block;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .title-link:hover { color: var(--blue); }
+    .title-sub { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+
+    .buses-cell { text-align: right; font-weight: 700; color: var(--green); white-space: nowrap; }
+    .deadline-cell { white-space: nowrap; }
+    .days-badge {
+      display: block; font-size: 11px; margin-top: 2px;
+      color: var(--gray-400);
+    }
+
+    .no-results {
+      padding: 48px 24px; text-align: center; color: var(--gray-500);
+    }
+    .no-results h3 { font-size: 15px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+
+    .summary-bar {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .sum-chip {
+      background: white; border: 1px solid var(--gray-200); border-radius: 8px;
+      padding: 10px 18px;
+    }
+    .sum-chip .n { font-size: 20px; font-weight: 700; color: var(--gray-900); }
+    .sum-chip .l { font-size: 11px; color: var(--gray-500); }
+
+    @media (max-width: 640px) {
+      .filter-bar select { min-width: 110px; }
+    }
+  </style>
+
+  <div class="page-hero">
+    <div style="max-width:1100px;margin:0 auto">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;font-weight:500;text-transform:uppercase;letter-spacing:.5px">
+        Tenders
+      </div>
+      <h1>Electric Bus Tender Tracker</h1>
+      <p>All known e-bus tenders in India — PM e-Bus Sewa, PM E-DRIVE, CESL GCC, and state STU tenders. Status computed from bid deadlines. Source-backed.</p>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <div class="summary-bar">
+      <div class="sum-chip"><div class="n">{enriched.length}</div><div class="l">Total tenders</div></div>
+      <div class="sum-chip"><div class="n">{openCount}</div><div class="l">Open / Active</div></div>
+      <div class="sum-chip"><div class="n">{totalBuses.toLocaleString('en-IN')}</div><div class="l">Buses in open tenders</div></div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <input id="search-input" type="search" placeholder="Search tenders…" autocomplete="off" />
+      <select id="status-filter">
+        <option value="">All statuses</option>
+        <option value="open">Open</option>
+        <option value="closing_soon">Closing Soon</option>
+        <option value="needs_review">Needs Review</option>
+        <option value="awarded">Awarded</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="extended">Extended</option>
+      </select>
+      <select id="scheme-filter">
+        <option value="">All schemes</option>
+        {schemes.map(s => <option value={s}>{s}</option>)}
+      </select>
+      <select id="model-filter">
+        <option value="">All contract types</option>
+        {models.map(m => <option value={m}>{m?.toUpperCase()}</option>)}
+      </select>
+      <span class="sep">|</span>
+      <button class="export-btn" id="csv-btn" title="Download visible tenders as CSV">
+        ⬇ CSV
+      </button>
+      <span class="filter-count" id="filter-count">{enriched.length} tenders</span>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="table-wrap">
+        <table class="tender-table" id="tender-table">
+          <thead>
+            <tr>
+              <th data-col="title">Tender</th>
+              <th data-col="buses" style="text-align:right">Buses</th>
+              <th data-col="status">Status</th>
+              <th data-col="scheme">Scheme</th>
+              <th data-col="model">Contract</th>
+              <th data-col="deadline">Bid Deadline</th>
+              <th data-col="confidence">Confidence</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {enriched.map(t => (
+              <tr
+                data-title={t.title}
+                data-authority={t.authority ?? t.issuer_name ?? ''}
+                data-status={t.effStatus}
+                data-scheme={t.scheme ?? ''}
+                data-model={t.contract_model ?? t.procurement_model ?? ''}
+                data-buses={String(t.bus_count ?? 0)}
+                data-deadline={t.bid_deadline ?? t.bid_due_date ?? ''}
+                data-confidence={t.confidence_label ?? 'unknown'}
+                data-source-url={t.source_url ?? ''}
+                data-search={[t.title, t.authority, t.scheme, t.issuer_name, t.state, t.lot].filter(Boolean).join(' ').toLowerCase()}
+              >
+                <td class="title-cell">
+                  <a class="title-link" href={`/tenders/${t.slug}/`}>
+                    {t.title.replace(/^\d+\s+/, '').slice(0, 100)}
+                  </a>
+                  <div class="title-sub">{t.authority ?? t.issuer_name}</div>
+                </td>
+                <td class="buses-cell">
+                  {t.bus_count != null ? t.bus_count.toLocaleString('en-IN') : '—'}
+                </td>
+                <td><StatusBadge status={t.effStatus} /></td>
+                <td style="font-size:12px;color:var(--gray-600)">{t.scheme ?? '—'}</td>
+                <td>
+                  {(t.contract_model ?? t.procurement_model) ? (
+                    <span class="tag tag-blue">{(t.contract_model ?? t.procurement_model)?.toUpperCase()}</span>
+                  ) : '—'}
+                </td>
+                <td class="deadline-cell">
+                  {t.bid_deadline ?? t.bid_due_date ?? '—'}
+                  <span class="days-badge">{t.daysDelta}</span>
+                </td>
+                <td><ConfidenceBadge label={t.confidence_label ?? 'unknown'} score={t.confidence_score} /></td>
+                <td>
+                  {t.source_url ? (
+                    <a href={t.source_url} target="_blank" rel="noopener" class="source-chip">
+                      🔗 {t.source_name?.slice(0, 20) ?? 'Source'}
+                    </a>
+                  ) : (
+                    <span class="source-chip">{t.source_name ?? '—'}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div class="no-results" id="no-results" hidden>
+          <h3>No tenders match your filters</h3>
+          <p>Try clearing the search or changing the filters above.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;font-size:12px;color:var(--gray-400)">
+      Statuses are computed from bid deadlines as of {BUILD_DATE.toISOString().slice(0,10)}.
+      A past deadline without a confirmed extension shows as "Needs Review" — not Open.
+      <a href="/methodology/#status" style="color:var(--blue)">How status works →</a>
+    </div>
+  </div>
+
+  <script>
+    const searchInput  = document.getElementById('search-input')  as HTMLInputElement;
+    const statusFilter = document.getElementById('status-filter') as HTMLSelectElement;
+    const schemeFilter = document.getElementById('scheme-filter') as HTMLSelectElement;
+    const modelFilter  = document.getElementById('model-filter')  as HTMLSelectElement;
+    const filterCount  = document.getElementById('filter-count')!;
+    const noResults    = document.getElementById('no-results')!;
+    const rows         = Array.from(document.querySelectorAll<HTMLTableRowElement>('#tender-table tbody tr'));
+
+    function applyFilters() {
+      const q      = searchInput.value.toLowerCase().trim();
+      const status = statusFilter.value;
+      const scheme = schemeFilter.value;
+      const model  = modelFilter.value;
+      let visible  = 0;
+
+      rows.forEach(row => {
+        const match =
+          (!q      || (row.dataset.search ?? '').includes(q)) &&
+          (!status || row.dataset.status === status) &&
+          (!scheme || row.dataset.scheme === scheme) &&
+          (!model  || row.dataset.model  === model);
+        row.hidden = !match;
+        if (match) visible++;
+      });
+
+      filterCount.textContent = `${visible} tender${visible !== 1 ? 's' : ''}`;
+      noResults.hidden = visible > 0;
+    }
+
+    searchInput .addEventListener('input',  applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+    schemeFilter.addEventListener('change', applyFilters);
+    modelFilter .addEventListener('change', applyFilters);
+
+    // CSV export
+    document.getElementById('csv-btn')!.addEventListener('click', () => {
+      const headers = ['Title','Authority','Scheme','State','Bus Count','Contract Model','Status','Bid Deadline','Confidence','Source URL'];
+      const visible = rows.filter(r => !r.hidden);
+      const data = visible.map(r => {
+        const d = r.dataset as DOMStringMap;
+        return [d.title,d.authority,d.scheme,'',d.buses,d.model,d.status,d.deadline,d.confidence,d.sourceUrl]
+          .map(v => `"${(v??'').replace(/"/g,'""')}"`).join(',');
+      });
+      const csv = [headers.join(','), ...data].join('\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
+      a.download = `ev-bus-tenders-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    });
+
+    // Sortable columns
+    document.querySelectorAll<HTMLElement>('#tender-table th[data-col]').forEach(th => {
+      let asc = true;
+      th.addEventListener('click', () => {
+        const col = th.dataset.col!;
+        const sorted = [...rows].sort((a, b) => {
+          let va = (a.dataset[col] ?? '').toLowerCase();
+          let vb = (b.dataset[col] ?? '').toLowerCase();
+          if (col === 'buses') { return asc ? (+va||0) - (+vb||0) : (+vb||0) - (+va||0); }
+          return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+        asc = !asc;
+        const tbody = document.querySelector('#tender-table tbody')!;
+        sorted.forEach(r => tbody.appendChild(r));
+      });
+    });
+  </script>
+</Layout>

@@ -1,0 +1,389 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
+import tenders from '../../data/tenders.json';
+
+export function getStaticPaths() {
+  return tenders.map(t => ({
+    params: { slug: t.slug },
+    props:  { tender: t },
+  }));
+}
+
+const { tender: t } = Astro.props as { tender: any };
+
+const BUILD_DATE = new Date('2026-06-14');
+
+function effectiveStatus(): string {
+  const declared = t.status as string;
+  if (declared === 'awarded' || declared === 'cancelled') return declared;
+  const dl: string | null = t.bid_deadline ?? t.bid_due_date ?? null;
+  if (!dl) return declared || 'unknown';
+  const deadline = new Date(dl);
+  const diffDays = Math.ceil((deadline.getTime() - BUILD_DATE.getTime()) / 864e5);
+  if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
+  if (diffDays <= 7) return 'closing_soon';
+  return 'open';
+}
+
+const effStatus = effectiveStatus();
+const deadline  = t.bid_deadline ?? t.bid_due_date ?? null;
+const daysLeft  = deadline
+  ? Math.ceil((new Date(deadline).getTime() - BUILD_DATE.getTime()) / 864e5)
+  : null;
+const cleanTitle = t.title.replace(/^\d+\s+/, '').trim();
+---
+<Layout
+  title={`${cleanTitle.slice(0,80)} | India EV Bus Tracker`}
+  description={`${t.authority ?? t.issuer_name} tender for ${t.bus_count?.toLocaleString('en-IN') ?? '?'} electric buses under ${t.scheme ?? 'e-bus scheme'}. Status: ${effStatus}. Source: ${t.source_name}.`}
+  type="article"
+>
+  <style>
+    .breadcrumb {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 12px 24px;
+    }
+    .bc-inner {
+      max-width: 1100px; margin: 0 auto;
+      font-size: 13px; color: var(--gray-500);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .bc-inner a { color: var(--gray-500); text-decoration: none; }
+    .bc-inner a:hover { color: var(--gray-900); }
+
+    .tender-hero {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 32px 24px 28px;
+    }
+    .hero-inner { max-width: 1100px; margin: 0 auto; }
+    .hero-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .tender-title { font-size: clamp(18px,3vw,26px); font-weight: 700; line-height: 1.3; margin-bottom: 10px; }
+    .tender-authority { font-size: 14px; color: var(--gray-500); margin-bottom: 20px; }
+    .key-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stat-box {
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: 8px; padding: 12px 20px; min-width: 120px;
+    }
+    .stat-box .lbl { font-size: 11px; color: var(--gray-400); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-box .val { font-size: 20px; font-weight: 700; color: var(--gray-900); margin-top: 2px; }
+    .stat-box .val.green { color: var(--green); }
+    .stat-box .val.amber { color: var(--amber); }
+    .stat-box .sub { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+
+    .pro-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+    .pro-action-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 500; padding: 7px 14px;
+      border: 1px dashed var(--gray-300); border-radius: var(--radius);
+      color: var(--gray-400); background: var(--gray-50); cursor: default;
+      text-decoration: none;
+    }
+
+    .content { display: flex; flex-direction: column; gap: 20px; }
+
+    .fields-section { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden; }
+    .fields-section .sec-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--gray-100);
+      font-size: 14px; font-weight: 600;
+    }
+    .fields-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .field-item {
+      padding: 14px 20px;
+      border-right: 1px solid var(--gray-100);
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .field-label { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .field-value { font-size: 13px; color: var(--gray-900); line-height: 1.4; }
+    .field-value.na { color: var(--gray-300); font-style: italic; }
+
+    .text-section { padding: 18px 20px; border-top: 1px solid var(--gray-100); }
+    .text-section h3 { font-size: 13px; font-weight: 600; color: var(--gray-500); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    .text-section p { font-size: 14px; color: var(--gray-700); line-height: 1.7; }
+
+    .timeline { padding: 18px 20px; border-top: 1px solid var(--gray-100); }
+    .timeline h3 { font-size: 13px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+    .tl-item { display: flex; gap: 12px; margin-bottom: 12px; }
+    .tl-item:last-child { margin-bottom: 0; }
+    .tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-top: 5px; flex-shrink: 0; }
+    .tl-dot.gray { background: var(--gray-300); }
+    .tl-content { flex: 1; }
+    .tl-date { font-size: 12px; color: var(--gray-400); }
+    .tl-note { font-size: 13px; color: var(--gray-700); }
+
+    .source-section {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 20px;
+    }
+    .source-section h2 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+    .source-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--gray-600); }
+    .source-divider { height: 1px; background: var(--gray-100); margin: 12px 0; }
+
+    .methodology-cta {
+      background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius);
+      padding: 12px 16px; font-size: 13px; color: var(--gray-500);
+    }
+    .methodology-cta a { color: var(--blue); }
+
+    .pro-box {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .pro-box-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .pro-box-header h2 { font-size: 14px; font-weight: 600; }
+    .pro-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--purple-light); color: var(--purple); }
+    .pro-box-body {
+      padding: 24px; text-align: center;
+      background: repeating-linear-gradient(45deg,var(--gray-50),var(--gray-50) 8px,var(--gray-100) 8px,var(--gray-100) 16px);
+    }
+    .pro-box-body .icon { font-size: 28px; margin-bottom: 8px; }
+    .pro-box-body p { font-size: 13px; color: var(--gray-500); max-width: 280px; margin: 0 auto; }
+
+    @media (max-width: 640px) {
+      .key-stats { gap: 8px; }
+      .stat-box { min-width: 100px; padding: 10px 14px; }
+      .tender-hero { padding: 24px 14px 20px; }
+    }
+  </style>
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <div class="bc-inner">
+      <a href="/">Home</a> <span>›</span>
+      <a href="/tenders/">Tenders</a> <span>›</span>
+      <span>{cleanTitle.slice(0, 60)}…</span>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="tender-hero">
+    <div class="hero-inner">
+      <div class="hero-badges">
+        <StatusBadge status={effStatus} />
+        {t.scheme && <span class="tag tag-blue">{t.scheme}</span>}
+        {(t.contract_model ?? t.procurement_model) && (
+          <span class="tag tag-gray">{(t.contract_model ?? t.procurement_model)?.toUpperCase()}</span>
+        )}
+        <ConfidenceBadge label={t.confidence_label ?? 'unknown'} score={t.confidence_score} />
+      </div>
+
+      <h1 class="tender-title">{cleanTitle}</h1>
+      <div class="tender-authority">{t.authority ?? t.issuer_name}</div>
+
+      <div class="key-stats">
+        <div class="stat-box">
+          <div class="lbl">Buses</div>
+          <div class="val green">{t.bus_count != null ? t.bus_count.toLocaleString('en-IN') : '—'}</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Bid Deadline</div>
+          <div class={`val${daysLeft !== null && daysLeft >= 0 ? ' amber' : ''}`}>
+            {deadline ?? '—'}
+          </div>
+          {daysLeft !== null && (
+            <div class="sub">
+              {daysLeft < 0 ? `${Math.abs(daysLeft)} days ago` : daysLeft === 0 ? 'Today' : `${daysLeft} days left`}
+            </div>
+          )}
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Contract Model</div>
+          <div class="val">{(t.contract_model ?? t.procurement_model)?.toUpperCase() ?? '—'}</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Charging Scope</div>
+          <div class="val" style="font-size:14px">{t.charging_scope ?? '—'}</div>
+        </div>
+      </div>
+
+      <!-- Pro action placeholders -->
+      <div class="pro-actions">
+        <span class="pro-action-btn" title="Coming soon">🔒 Watch this tender</span>
+        <span class="pro-action-btn" title="Coming soon">🔒 Export tender memo</span>
+        <span class="pro-action-btn" title="Coming soon">🔒 Compare tenders</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="content">
+
+      <!-- Full tender intelligence -->
+      <div class="fields-section">
+        <div class="sec-header">Tender Intelligence</div>
+        <div class="fields-grid">
+          <div class="field-item">
+            <div class="field-label">Tender Reference</div>
+            <div class="field-value">{t.tender_ref ?? '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Issuing Authority</div>
+            <div class="field-value">{t.authority ?? t.issuer_name ?? '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Scheme</div>
+            <div class="field-value">{t.scheme ?? '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">State / Region</div>
+            <div class="field-value">{t.state ?? '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">City / Lot / Cluster</div>
+            <div class={`field-value${!t.city && !t.lot ? ' na' : ''}`}>
+              {t.city ?? t.lot ?? 'Not specified'}
+            </div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Bus Count</div>
+            <div class="field-value">{t.bus_count != null ? t.bus_count.toLocaleString('en-IN') : '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Bus Type / Size</div>
+            <div class={`field-value${!t.bus_type ? ' na' : ''}`}>{t.bus_type ?? 'Not specified'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Contract Model</div>
+            <div class="field-value">{(t.contract_model ?? t.procurement_model)?.toUpperCase() ?? '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Contract Duration</div>
+            <div class={`field-value${!t.contract_duration ? ' na' : ''}`}>{t.contract_duration ?? 'Not specified'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Pre-bid Date</div>
+            <div class={`field-value${!t.pre_bid_date ? ' na' : ''}`}>{t.pre_bid_date ?? 'Not specified'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Bid Deadline</div>
+            <div class="field-value">{deadline ?? '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">EMD Required</div>
+            <div class={`field-value${!t.emd ? ' na' : ''}`}>{t.emd ?? 'Not specified'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Tender Value</div>
+            <div class={`field-value${!t.tender_value ? ' na' : ''}`}>{t.tender_value ?? 'Not disclosed'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Charging Scope</div>
+            <div class="field-value">{t.charging_scope ?? '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Depot / Civil Infra Scope</div>
+            <div class="field-value">{t.depot_scope ?? '—'}</div>
+          </div>
+          <div class="field-item">
+            <div class="field-label">Last Checked</div>
+            <div class="field-value">{t.last_checked_at ?? '—'}</div>
+          </div>
+        </div>
+
+        {t.eligibility_summary && (
+          <div class="text-section">
+            <h3>Eligibility Summary</h3>
+            <p>{t.eligibility_summary}</p>
+          </div>
+        )}
+
+        {t.why_it_matters && (
+          <div class="text-section">
+            <h3>Why This Tender Matters</h3>
+            <p>{t.why_it_matters}</p>
+          </div>
+        )}
+
+        {t.key_risks && (
+          <div class="text-section">
+            <h3>Key Risks</h3>
+            <p>{t.key_risks}</p>
+          </div>
+        )}
+
+        {t.notes && (
+          <div class="text-section" style="background:var(--amber-light);border-top:1px solid #fde68a">
+            <h3 style="color:var(--amber)">Tracker Note</h3>
+            <p style="color:#92400e">{t.notes}</p>
+          </div>
+        )}
+      </div>
+
+      <!-- Status history -->
+      {t.status_history && t.status_history.length > 0 && (
+        <div class="fields-section">
+          <div class="timeline">
+            <h3>Status Timeline</h3>
+            {[...t.status_history].reverse().map((ev: any, i: number) => (
+              <div class="tl-item">
+                <div class={`tl-dot${i > 0 ? ' gray' : ''}`}></div>
+                <div class="tl-content">
+                  <div class="tl-date">{ev.date}</div>
+                  <div class="tl-note">{ev.note}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- Source trail -->
+      <div class="source-section">
+        <h2>Source Trail</h2>
+        <div class="source-row">
+          <span>Source:</span>
+          {t.source_url ? (
+            <a href={t.source_url} target="_blank" rel="noopener" class="source-chip">
+              🔗 {t.source_name}
+            </a>
+          ) : (
+            <span class="source-chip">{t.source_name ?? '—'}</span>
+          )}
+          <span class="tag tag-gray">{t.source_type?.replace(/_/g,' ')}</span>
+        </div>
+        <div class="source-divider" />
+        <div class="source-row">
+          <span>Source date:</span>
+          <strong>{t.source_date ?? '—'}</strong>
+          <span>·</span>
+          <span>Last checked:</span>
+          <strong>{t.last_checked_at ?? '—'}</strong>
+        </div>
+        <div class="source-divider" />
+        <div class="methodology-cta">
+          Data in this tracker uses public sources only.
+          <a href="/methodology/">View full methodology</a> to understand confidence scores,
+          status logic, and stage definitions.
+        </div>
+      </div>
+
+      <!-- Comparable tenders placeholder -->
+      <div class="pro-box">
+        <div class="pro-box-header">
+          <h2>Comparable Tenders</h2>
+          <span class="pro-badge">Coming soon</span>
+        </div>
+        <div class="pro-box-body">
+          <div class="icon">🔒</div>
+          <p>Similar tenders by bus count, scheme, contract model, and state — with key metric comparisons.</p>
+        </div>
+      </div>
+
+      <!-- GCC economics placeholder -->
+      <div class="pro-box">
+        <div class="pro-box-header">
+          <h2>GCC Economics Benchmark</h2>
+          <span class="pro-badge">Coming soon</span>
+        </div>
+        <div class="pro-box-body">
+          <div class="icon">🔒</div>
+          <p>Revenue per bus per day, charging cost assumptions, and contract viability analysis for GCC tenders.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "event_date": "2026-06-10",
+    "event_type": "tender_added",
+    "title": "CESL Tender 3 added — 3,604 buses, PM e-Bus Sewa",
+    "summary": "CESL issued Tender 3 under PM e-Bus Sewa for 3,604 electric buses on GCC model across multiple states. Bid deadline: 7 July 2026.",
+    "source_label": "CESL tender portal",
+    "source_url": "https://www.convergence.co.in/tender",
+    "entity_type": "tender",
+    "entity_slug": "cesl-pm-ebus-sewa-3-3604"
+  },
+  {
+    "id": 2,
+    "event_date": "2026-06-10",
+    "event_type": "status_change",
+    "title": "PM E-DRIVE Tender II marked Needs Review — bid deadline passed",
+    "summary": "Bid deadline for CESL PM E-DRIVE Tender II (2,900 buses) passed on 15 April 2026. No extension or award confirmed. Status updated to Needs Review.",
+    "source_label": "Tracker auto-computed",
+    "source_url": null,
+    "entity_type": "tender",
+    "entity_slug": "cesl-pm-edrive-2-2900"
+  },
+  {
+    "id": 3,
+    "event_date": "2026-06-10",
+    "event_type": "data_update",
+    "title": "Deployment data updated — 18 known city-operator deployments",
+    "summary": "Known e-bus deployments for 6 OEMs across 18 city-operator pairs updated from public annual reports and press releases. Total known operational: 2,520+ buses.",
+    "source_label": "Annual reports, press releases",
+    "source_url": null,
+    "entity_type": "deployment",
+    "entity_slug": null
+  },
+  {
+    "id": 4,
+    "event_date": "2026-06-07",
+    "event_type": "monitor_update",
+    "title": "BSE disclosure monitoring active for 5 OEMs",
+    "summary": "Automated BSE filing monitoring configured for Olectra Greentech, JBM Auto, Tata Motors, Ashok Leyland, and Eicher Motors.",
+    "source_label": "BSE India",
+    "source_url": "https://www.bseindia.com",
+    "entity_type": "oem",
+    "entity_slug": null
+  },
+  {
+    "id": 5,
+    "event_date": "2026-06-07",
+    "event_type": "data_update",
+    "title": "CESL tender portal scraped — 2 active tenders confirmed",
+    "summary": "CESL portal (convergence.co.in/tender) scraped. 2 GCC tenders confirmed: PM e-Bus Sewa Tender 3 (3,604 buses, open) and PM E-DRIVE Tender II (2,900 buses, needs review).",
+    "source_label": "CESL tender portal",
+    "source_url": "https://www.convergence.co.in/tender",
+    "entity_type": "tender",
+    "entity_slug": null
+  }
+]

@@ -1,0 +1,46 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  type?: 'website' | 'article';
+  image?: string;
+}
+const SITE = 'https://ev-bus-tracker.pages.dev';
+const DEFAULT_IMAGE = `${SITE}/og-default.png`;
+
+const {
+  title,
+  description,
+  canonical = Astro.url.href,
+  type = 'website',
+  image = DEFAULT_IMAGE,
+} = Astro.props;
+
+const fullTitle = title.includes('EV Bus Tracker')
+  ? title
+  : `${title} — India EV Bus Tracker`;
+---
+
+<!-- Primary -->
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+
+<!-- Open Graph (WhatsApp, LinkedIn, Slack previews) -->
+<meta property="og:type"        content={type} />
+<meta property="og:title"       content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url"         content={canonical} />
+<meta property="og:image"       content={image} />
+<meta property="og:site_name"   content="India EV Bus Tracker" />
+<meta property="og:locale"      content="en_IN" />
+
+<!-- Twitter card -->
+<meta name="twitter:card"        content="summary_large_image" />
+<meta name="twitter:title"       content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image"       content={image} />
+
+<!-- Indexing hints -->
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />

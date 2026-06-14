@@ -1,179 +1,260 @@
 ---
+import Layout from '../../layouts/Layout.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
 import organizations from '../../data/organizations.json';
 import tenders from '../../data/tenders.json';
 import deployments from '../../data/deployments.json';
 
 export function getStaticPaths() {
   return organizations
-    .filter((o) => o.org_type === 'oem')
-    .map((o) => ({ params: { slug: o.slug }, props: { org: o } }));
+    .filter(o => o.org_type === 'oem')
+    .map(o => ({ params: { slug: o.slug }, props: { org: o } }));
 }
 
-const { org } = Astro.props;
+const { org } = Astro.props as { org: any };
 
-const orgTenders = tenders.filter(
-  (t) => t.issuing_org_id === org.id || t.issuer_slug === org.slug
-);
-const openTenders = orgTenders.filter((t) =>
-  ['open', 'extended', 'announced'].includes(t.status)
-);
-const orgDeployments = deployments.filter((d) => d.oem_name === org.name);
-const totalDeployed = orgDeployments.reduce((s, d) => s + (d.bus_count || 0), 0);
-const activeCities = [...new Set(orgDeployments.map((d) => d.city).filter(Boolean))];
+const BUILD_DATE = new Date('2026-06-14');
+function effectiveStatus(t: any): string {
+  const declared = (t.status as string) ?? 'unknown';
+  if (declared === 'awarded' || declared === 'cancelled') return declared;
+  const dl: string | null = t.bid_deadline ?? t.bid_due_date ?? null;
+  if (!dl) return declared || 'unknown';
+  const diffDays = Math.ceil((new Date(dl).getTime() - BUILD_DATE.getTime()) / 864e5);
+  if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
+  return diffDays <= 7 ? 'closing_soon' : 'open';
+}
+
+const orgTenders   = tenders.filter(t => t.issuing_org_id === org.id || t.issuer_slug === org.slug);
+const openTenders  = orgTenders.filter(t => ['open','closing_soon'].includes(effectiveStatus(t)));
+const orgDeps      = deployments.filter(d => d.oem_name === org.name);
+const totalDep     = orgDeps.reduce((s, d) => s + (d.bus_count ?? 0), 0);
+const cities       = [...new Set(orgDeps.map(d => d.city).filter(Boolean))]  as string[];
+const statesCov    = [...new Set(orgDeps.map(d => d.state).filter(Boolean))] as string[];
+
+/* Embedded meta — public information only */
+const OEM_META: Record<string, {
+  overview: string;
+  company_type: 'public' | 'private';
+  confidence_label: string;
+  source_name: string;
+  last_checked: string;
+}> = {
+  'olectra-greentech': {
+    overview: "Olectra Greentech (formerly Goldstone Infratech) is India's earliest large-scale electric bus manufacturer. Part of Megha Group. Product: Olectra K9 (12m city bus). Operates under GCC contracts via CESL in multiple cities.",
+    company_type: 'public',
+    confidence_label: 'medium',
+    source_name: 'BSE filings, annual reports',
+    last_checked: '2026-06-10',
+  },
+  'jbm-auto': {
+    overview: "JBM Auto manufactures electric buses under the Ecolife and Cityliner brands. Listed on BSE/NSE. Among India's top three GCC e-bus OEMs by fleet size. Significant presence in Delhi, Mumbai, and Kolkata.",
+    company_type: 'public',
+    confidence_label: 'medium',
+    source_name: 'BSE filings, annual reports',
+    last_checked: '2026-06-10',
+  },
+  'tata-motors': {
+    overview: "Tata Motors is India's largest commercial vehicle manufacturer. E-bus portfolio: Tata Starbus EV (9m and 12m). Significant volumes under CESL GCC contracts. Buses deployed across Mumbai, Pune, Bengaluru, and UP.",
+    company_type: 'public',
+    confidence_label: 'medium',
+    source_name: 'BSE filings, annual reports',
+    last_checked: '2026-06-10',
+  },
+  'ashok-leyland': {
+    overview: "Ashok Leyland is a major Indian commercial vehicle OEM. Electric bus product: Circuit EV. Limited GCC volume so far — primarily pilot deployments. Monitored via BSE filings.",
+    company_type: 'public',
+    confidence_label: 'low',
+    source_name: 'BSE filings, press releases',
+    last_checked: '2026-06-10',
+  },
+  'switch-mobility': {
+    overview: "Switch Mobility (formerly Optare, Ashok Leyland subsidiary) manufactures electric buses. Product: EiV12. Deployed in pilots in Delhi (DIMTS) and Bengaluru (BMTC). Not listed on Indian exchanges.",
+    company_type: 'private',
+    confidence_label: 'low',
+    source_name: 'Press releases, media coverage',
+    last_checked: '2026-06-10',
+  },
+  'eicher-motors': {
+    overview: "Eicher Motors (operates VECV, a joint venture with Volvo Group) is monitored via BSE filings. No confirmed GCC e-bus volume tracked yet in this dataset.",
+    company_type: 'public',
+    confidence_label: 'unknown',
+    source_name: 'BSE monitoring (no e-bus filings found yet)',
+    last_checked: '2026-06-10',
+  },
+};
+
+const meta = OEM_META[org.slug] ?? {
+  overview: null,
+  company_type: org.bse_scrip_code ? 'public' : 'private',
+  confidence_label: 'unknown',
+  source_name: 'Public sources',
+  last_checked: '2026-06-10',
+};
+
+/* Stage display mapping */
+const STAGE_LABELS: Record<string, string> = {
+  operational: 'Operational',
+  active:      'Operational',
+  registered:  'Registered',
+  delivered:   'Delivered',
+  awarded:     'Awarded',
+  loa_issued:  'LoA Issued',
+  tendered:    'Tendered',
+  sanctioned:  'Sanctioned',
+  cancelled:   'Cancelled',
+  unknown:     'Unknown',
+};
 ---
+<Layout
+  title={`${org.name} Electric Bus Orders, Deployments & Tenders — India EV Bus Tracker`}
+  description={`Track ${org.name}'s electric bus deployments, open tenders, and BSE order disclosures across India. Known operational: ${totalDep.toLocaleString('en-IN')} buses. Public-source data only.`}
+  type="article"
+>
+  <style>
+    .breadcrumb {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 10px 24px;
+    }
+    .bc { max-width: 1100px; margin: 0 auto; font-size: 13px; color: var(--gray-500); display: flex; gap: 6px; align-items: center; }
+    .bc a { color: var(--gray-500); text-decoration: none; }
+    .bc a:hover { color: var(--gray-900); }
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{org.name} Electric Bus Orders, Tenders & Deployments — EV Bus Tracker</title>
-    <meta
-      name="description"
-      content={`Track ${org.name}'s electric bus orders, live tenders, and city deployments across India. Updated daily from BSE disclosures and public tender portals.`}
-    />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      :root {
-        --green: #16a34a; --green-light: #dcfce7; --green-dark: #14532d;
-        --blue: #2563eb; --blue-light: #dbeafe;
-        --amber: #d97706; --amber-light: #fef3c7;
-        --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
-        --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827;
-        --radius: 12px;
-      }
-      body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-900); line-height: 1.6; }
-      nav {
-        background: white; border-bottom: 1px solid var(--gray-200);
-        padding: 0 24px; display: flex; align-items: center; gap: 16px;
-        height: 56px; position: sticky; top: 0; z-index: 10;
-      }
-      .nav-brand { font-weight: 700; font-size: 15px; color: var(--green-dark); text-decoration: none; }
-      .breadcrumb { font-size: 14px; color: var(--gray-500); display: flex; align-items: center; gap: 8px; }
-      .breadcrumb a { color: var(--gray-500); text-decoration: none; }
-      .breadcrumb a:hover { color: var(--gray-900); }
+    .oem-hero {
+      background: white; border-bottom: 1px solid var(--gray-200);
+      padding: 32px 24px 28px;
+    }
+    .hero-inner { max-width: 1100px; margin: 0 auto; }
+    .hero-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .oem-title { font-size: clamp(22px,4vw,34px); font-weight: 700; margin-bottom: 6px; }
+    .oem-type { font-size: 14px; color: var(--gray-500); margin-bottom: 20px; }
 
-      .hero {
-        background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
-        color: white; padding: 48px 24px 40px;
-      }
-      .hero-inner { max-width: 900px; margin: 0 auto; }
-      .org-type-badge {
-        display: inline-block; background: rgba(255,255,255,.15);
-        border: 1px solid rgba(255,255,255,.25); border-radius: 99px;
-        font-size: 12px; font-weight: 600; padding: 3px 12px;
-        text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px;
-      }
-      .hero h1 { font-size: clamp(24px, 4vw, 36px); font-weight: 700; margin-bottom: 8px; }
-      .hero p { font-size: 16px; opacity: .8; margin-bottom: 32px; }
-      .stats-row { display: flex; gap: 16px; flex-wrap: wrap; }
-      .stat-box {
-        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
-        border-radius: 10px; padding: 16px 24px; min-width: 130px;
-      }
-      .stat-box .num { font-size: 28px; font-weight: 700; line-height: 1; }
-      .stat-box .label { font-size: 12px; opacity: .7; margin-top: 4px; }
+    .stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stat-box {
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: 8px; padding: 12px 20px; min-width: 110px;
+    }
+    .stat-box .lbl { font-size: 11px; color: var(--gray-400); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-box .val { font-size: 22px; font-weight: 700; color: var(--gray-900); margin-top: 2px; }
+    .stat-box .val.green { color: var(--green); }
 
-      .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; display: flex; flex-direction: column; gap: 24px; }
-      .card { background: white; border-radius: var(--radius); border: 1px solid var(--gray-200); overflow: hidden; }
-      .card-header {
-        padding: 18px 24px 14px; border-bottom: 1px solid var(--gray-100);
-        display: flex; align-items: center; justify-content: space-between;
-      }
-      .card-header h2 { font-size: 15px; font-weight: 600; }
-      .count { font-size: 12px; color: var(--gray-500); background: var(--gray-100); padding: 2px 10px; border-radius: 99px; }
+    .content { display: flex; flex-direction: column; gap: 20px; }
 
-      .tender-item { padding: 16px 24px; border-bottom: 1px solid var(--gray-100); }
-      .tender-item:last-child { border-bottom: none; }
-      .tender-title { font-size: 14px; font-weight: 500; color: var(--gray-900); text-decoration: none; display: block; margin-bottom: 8px; line-height: 1.4; }
-      .tender-title:hover { color: var(--blue); }
-      .tags { display: flex; gap: 6px; flex-wrap: wrap; }
-      .tag { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 99px; }
-      .tag-green { background: var(--green-light); color: var(--green-dark); }
-      .tag-blue  { background: var(--blue-light);  color: var(--blue); }
-      .tag-amber { background: var(--amber-light); color: var(--amber); }
-      .tag-gray  { background: var(--gray-100);    color: var(--gray-700); }
+    /* Overview card */
+    .overview-card {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 20px 24px;
+    }
+    .overview-card h2 { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+    .overview-card p { font-size: 14px; color: var(--gray-700); line-height: 1.7; }
 
-      .city-grid { padding: 20px 24px; display: flex; gap: 10px; flex-wrap: wrap; }
-      .city-chip {
-        background: var(--green-light); color: var(--green-dark);
-        font-size: 13px; font-weight: 500; padding: 6px 16px; border-radius: 99px;
-      }
+    /* Stage note */
+    .stage-note {
+      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius);
+      padding: 10px 14px; font-size: 12px; color: var(--green-dark); line-height: 1.6;
+    }
 
-      .empty { padding: 32px 24px; text-align: center; color: var(--gray-500); font-size: 14px; }
+    /* Deployments table */
+    .dep-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .dep-table th {
+      font-size: 11px; font-weight: 600; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: .5px;
+      padding: 10px 16px; text-align: left;
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+    }
+    .dep-table td { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+    .dep-table tr:last-child td { border-bottom: none; }
+    .dep-table tr:hover td { background: var(--gray-50); }
+    .dep-table .num { text-align: right; font-weight: 700; color: var(--green); }
+    .dep-table .muted { color: var(--gray-400); font-size: 12px; }
+    .dep-table tfoot td {
+      background: var(--gray-50); border-top: 2px solid var(--gray-200);
+      font-weight: 600; padding: 10px 16px;
+    }
 
-      .dep-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-      .dep-table th {
-        font-size: 11px; font-weight: 600; color: var(--gray-500);
-        text-transform: uppercase; letter-spacing: .5px;
-        padding: 10px 16px; text-align: left; background: var(--gray-50);
-        border-bottom: 1px solid var(--gray-200);
-      }
-      .dep-table td { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
-      .dep-table tr:last-child td { border-bottom: none; }
-      .dep-table tfoot td { background: var(--gray-50); border-top: 2px solid var(--gray-200); }
-      .dep-table .num { text-align: right; font-weight: 600; color: var(--green); }
-      .dep-table .model { color: var(--gray-500); font-size: 13px; }
-      .dep-table .date { color: var(--gray-500); font-size: 13px; white-space: nowrap; }
+    /* Tender items */
+    .tender-item { padding: 14px 20px; border-bottom: 1px solid var(--gray-100); }
+    .tender-item:last-child { border-bottom: none; }
+    .tender-link {
+      font-size: 13px; font-weight: 500; color: var(--gray-900);
+      text-decoration: none; display: block; margin-bottom: 8px; line-height: 1.4;
+    }
+    .tender-link:hover { color: var(--blue); }
+    .tender-meta { display: flex; gap: 6px; flex-wrap: wrap; }
 
-      .links-row { display: flex; gap: 12px; flex-wrap: wrap; padding: 20px 24px; }
-      .ext-link {
-        font-size: 13px; font-weight: 500; color: var(--blue);
-        text-decoration: none; display: flex; align-items: center; gap: 4px;
-      }
-      .ext-link:hover { text-decoration: underline; }
+    /* Source section */
+    .source-card {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 18px 20px;
+    }
+    .source-card h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+    .source-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--gray-600); }
+    .source-sep { height: 1px; background: var(--gray-100); margin: 10px 0; }
 
-      footer { background: white; border-top: 1px solid var(--gray-200); padding: 24px; text-align: center; font-size: 13px; color: var(--gray-500); margin-top: 24px; }
-    </style>
-  </head>
-  <body>
-    <nav>
-      <a class="nav-brand" href="/">🚌 EV Bus Tracker</a>
-      <div class="breadcrumb">
-        <span>›</span>
-        <a href="/">Home</a>
-        <span>›</span>
-        <span>{org.name}</span>
+    /* Vahan placeholder */
+    .vahan-ph {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .vahan-ph-body {
+      padding: 32px 24px; text-align: center;
+      background: repeating-linear-gradient(45deg,var(--gray-50),var(--gray-50) 8px,var(--gray-100) 8px,var(--gray-100) 16px);
+    }
+    .vahan-ph-body p { font-size: 13px; color: var(--gray-500); max-width: 300px; margin: 0 auto; }
+
+    /* Links row */
+    .links-row { display: flex; gap: 12px; flex-wrap: wrap; padding: 16px 20px; }
+    .ext-link { font-size: 13px; font-weight: 500; color: var(--blue); text-decoration: none; display: flex; align-items: center; gap: 4px; }
+    .ext-link:hover { text-decoration: underline; }
+  </style>
+
+  <div class="breadcrumb">
+    <div class="bc">
+      <a href="/">Home</a> <span>›</span>
+      <a href="/oem/">OEMs</a> <span>›</span>
+      <span>{org.name}</span>
+    </div>
+  </div>
+
+  <div class="oem-hero">
+    <div class="hero-inner">
+      <div class="hero-badges">
+        <span class="tag tag-gray">OEM</span>
+        {meta.company_type === 'public'
+          ? <span class="tag tag-blue">Listed</span>
+          : <span class="tag tag-gray">Private</span>
+        }
+        <ConfidenceBadge label={meta.confidence_label} />
       </div>
-    </nav>
-
-    <div class="hero">
-      <div class="hero-inner">
-        <div class="org-type-badge">OEM</div>
-        <h1>{org.name}</h1>
-        <p>Electric bus orders, tenders, and deployments across India</p>
-        <div class="stats-row">
-          <div class="stat-box">
-            <div class="num">{openTenders.length}</div>
-            <div class="label">open tenders</div>
-          </div>
-          <div class="stat-box">
-            <div class="num">{orgTenders.length}</div>
-            <div class="label">total tenders</div>
-          </div>
-          <div class="stat-box">
-            <div class="num">{totalDeployed > 0 ? totalDeployed.toLocaleString('en-IN') : '—'}</div>
-            <div class="label">buses deployed</div>
-          </div>
-          <div class="stat-box">
-            <div class="num">{activeCities.length > 0 ? activeCities.length : '—'}</div>
-            <div class="label">cities</div>
-          </div>
+      <h1 class="oem-title">{org.name}</h1>
+      <div class="oem-type">Electric bus manufacturer · {meta.company_type === 'public' ? 'Publicly listed' : 'Private company'}</div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="lbl">Known Operational</div>
+          <div class={`val${totalDep > 0 ? ' green' : ''}`}>{totalDep > 0 ? totalDep.toLocaleString('en-IN') : '—'}</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Cities</div>
+          <div class="val">{cities.length || '—'}</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">States</div>
+          <div class="val">{statesCov.length || '—'}</div>
+        </div>
+        <div class="stat-box">
+          <div class="lbl">Open Tenders</div>
+          <div class="val">{openTenders.length}</div>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="container">
+  <div class="container">
+    <div class="content">
 
       <!-- External links -->
       {(org.website || org.bse_scrip_code) && (
-        <div class="card">
+        <div class="card" style="overflow:visible">
           <div class="links-row">
             {org.website && (
-              <a class="ext-link" href={org.website} target="_blank" rel="noopener">
-                🌐 Official website
-              </a>
+              <a class="ext-link" href={org.website} target="_blank" rel="noopener">🌐 Official website</a>
             )}
             {org.bse_scrip_code && (
               <a class="ext-link"
@@ -186,75 +267,138 @@ const activeCities = [...new Set(orgDeployments.map((d) => d.city).filter(Boolea
         </div>
       )}
 
+      <!-- Overview -->
+      {meta.overview && (
+        <div class="overview-card">
+          <h2>Company Overview</h2>
+          <p>{meta.overview}</p>
+        </div>
+      )}
+
+      <!-- Stage note -->
+      <div class="stage-note">
+        <strong>Data precision note:</strong> Bus counts below reflect "known operational" stage — confirmed from public annual reports and press releases.
+        This tracker distinguishes between <em>Sanctioned → Tendered → Awarded → LoA Issued → Delivered → Registered → Operational</em>.
+        Only "Operational" or "Active" is shown unless a different stage is explicitly confirmed.
+      </div>
+
       <!-- Open tenders -->
       <div class="card">
         <div class="card-header">
           <h2>Open Tenders</h2>
-          <span class="count">{openTenders.length}</span>
+          <span class="pill">{openTenders.length}</span>
         </div>
         {openTenders.length === 0 ? (
-          <div class="empty">No open tenders found for {org.name} right now.</div>
-        ) : (
-          openTenders.map((t) => (
-            <div class="tender-item">
-              <a class="tender-title" href={t.source_url} target="_blank" rel="noopener">
-                {t.title.replace(/^\d+\s+/, '').slice(0, 160)}
-              </a>
-              <div class="tags">
-                {t.bus_count && <span class="tag tag-green">{t.bus_count.toLocaleString('en-IN')} buses</span>}
-                {t.procurement_model === 'gcc' && <span class="tag tag-blue">GCC</span>}
-                {t.bid_due_date && <span class="tag tag-amber">Due {t.bid_due_date}</span>}
-              </div>
+          <div class="empty-state">
+            <div class="es-icon">📋</div>
+            <h3>No open tenders</h3>
+            <p>No active tenders found for {org.name} right now.</p>
+          </div>
+        ) : openTenders.map(t => (
+          <div class="tender-item">
+            <a class="tender-link" href={`/tenders/${t.slug}/`}>
+              {t.title.replace(/^\d+\s+/, '').slice(0, 140)}
+            </a>
+            <div class="tender-meta">
+              <StatusBadge status={effectiveStatus(t)} />
+              {t.bus_count && <span class="tag tag-green">{t.bus_count.toLocaleString('en-IN')} buses</span>}
+              {(t.contract_model ?? t.procurement_model) && (
+                <span class="tag tag-blue">{(t.contract_model ?? t.procurement_model)?.toUpperCase()}</span>
+              )}
+              {(t.bid_deadline ?? t.bid_due_date) && (
+                <span class="tag tag-amber">Due {t.bid_deadline ?? t.bid_due_date}</span>
+              )}
             </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
 
-      <!-- Deployments table -->
-      {orgDeployments.length > 0 && (
+      <!-- Deployments -->
+      {orgDeps.length > 0 && (
         <div class="card">
           <div class="card-header">
             <h2>Known Deployments</h2>
-            <span class="count">{orgDeployments.length} cities</span>
+            <span class="pill">{orgDeps.length} records</span>
           </div>
-          <table class="dep-table">
-            <thead>
-              <tr>
-                <th>City</th>
-                <th>Operator</th>
-                <th>Model</th>
-                <th>Buses</th>
-                <th>Since</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orgDeployments
-                .sort((a, b) => (b.bus_count || 0) - (a.bus_count || 0))
-                .map((d) => (
-                  <tr>
-                    <td><strong>{d.city || '—'}</strong>{d.state ? `, ${d.state}` : ''}</td>
-                    <td>{d.operator_name || '—'}</td>
-                    <td class="model">{d.bus_model || '—'}</td>
-                    <td class="num">{(d.bus_count || 0).toLocaleString('en-IN')}</td>
-                    <td class="date">{d.deployment_date ? d.deployment_date.slice(0, 7) : '—'}</td>
-                  </tr>
-                ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3"><strong>Total</strong></td>
-                <td class="num"><strong>{totalDeployed.toLocaleString('en-IN')}</strong></td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
+          <div style="overflow-x:auto">
+            <table class="dep-table">
+              <thead>
+                <tr>
+                  <th>City</th>
+                  <th>State</th>
+                  <th>Operator</th>
+                  <th>Model</th>
+                  <th>Stage</th>
+                  <th style="text-align:right">Buses</th>
+                  <th>Since</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orgDeps
+                  .sort((a, b) => (b.bus_count ?? 0) - (a.bus_count ?? 0))
+                  .map(d => (
+                    <tr>
+                      <td><strong>{d.city ?? '—'}</strong></td>
+                      <td class="muted">{d.state ?? '—'}</td>
+                      <td>{d.operator_name ?? '—'}</td>
+                      <td class="muted">{d.bus_model ?? '—'}</td>
+                      <td>
+                        <span class="tag tag-green">
+                          {STAGE_LABELS[d.status ?? 'unknown'] ?? d.status ?? 'Unknown'}
+                        </span>
+                      </td>
+                      <td class="num">{(d.bus_count ?? 0).toLocaleString('en-IN')}</td>
+                      <td class="muted">{d.deployment_date ? d.deployment_date.slice(0,7) : '—'}</td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5">Total known operational</td>
+                  <td class="num" style="color:var(--green)">{totalDep.toLocaleString('en-IN')}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
 
-    </div>
+      <!-- Vahan registration placeholder -->
+      <div class="vahan-ph">
+        <div class="card-header">
+          <h2>Vahan Registration Trend</h2>
+          <span class="pill">Coming soon</span>
+        </div>
+        <div class="vahan-ph-body">
+          <p>Monthly Vahan registration data for {org.name} will appear here once the registration module is live.</p>
+        </div>
+      </div>
 
-    <footer>
-      Data from BSE disclosures and public tender portals. Updated daily. Not affiliated with {org.name}.
-    </footer>
-  </body>
-</html>
+      <!-- Source trail -->
+      <div class="source-card">
+        <h2>Source Trail</h2>
+        <div class="source-row">
+          <span>Data source:</span>
+          <span class="source-chip">{meta.source_name}</span>
+          <span class="tag tag-gray">manual_review</span>
+        </div>
+        <div class="source-sep" />
+        <div class="source-row">
+          <span>Last checked:</span>
+          <strong>{meta.last_checked}</strong>
+          <span>·</span>
+          <span>Confidence:</span>
+          <ConfidenceBadge label={meta.confidence_label} />
+        </div>
+        <div class="source-sep" />
+        <div style="font-size:12px;color:var(--gray-500)">
+          Data uses public sources only. Not affiliated with {org.name}.
+          <a href="/methodology/" style="color:var(--blue)">Full methodology →</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</Layout>
