@@ -121,6 +121,9 @@ def merge_record(fact: dict, editorial: dict | None) -> dict:
     rec["city"] = ", ".join(cities) if cities else None
     # Lot label under the old key the detail page + search read.
     rec["lot"] = fact.get("lot_label")
+    # City-lot decomposition (plural array, distinct from the singular scope
+    # label above). Pass through from facts; default [] for tenders with none.
+    rec["lots"] = fact.get("lots", [])
     # Date fields the pages read under v1 names (site already ?? to *_due/etc).
     rec["bid_deadline"] = fact.get("bid_due_date")
     rec["pre_bid_date"] = fact.get("prebid_date")

@@ -138,6 +138,24 @@ def amendments_for(conn, tender_id: int) -> list[dict]:
     """, (tender_id,))
 
 
+def lots_for(conn, tender_id: int) -> list[dict]:
+    """City-lot decomposition for a (usually multi-city) tender.
+
+    Distinct from the tender-level singular scope label (tenders.lot_label,
+    emitted as 'lot_label'): this is the per-city breakdown from tender_lots,
+    attached as the plural 'lots' array. Tenders with no rows get []. Explicit
+    column list (never SELECT *) so a future ALTER cannot leak a column.
+    Ordered by bus_count DESC then city for a deterministic export.
+    """
+    return rows(conn, """
+        SELECT lot_label, city, state, scheme, bus_count, bus_length_m,
+               confidence, coverage_boundary, group_id
+        FROM tender_lots
+        WHERE tender_id = ?
+        ORDER BY bus_count DESC, city
+    """, (tender_id,))
+
+
 def tender_facts(conn) -> list[dict]:
     """Facts-only tender export: explicit columns + derived timeline/labels.
 
@@ -172,6 +190,7 @@ def tender_facts(conn) -> list[dict]:
         t["source_type"] = SOURCE_TYPE_MAP.get(raw_type, raw_type)
         t["status_history"] = status_history_for(conn, t["id"])
         t["amendments"] = amendments_for(conn, t["id"])
+        t["lots"] = lots_for(conn, t["id"])
     return base
 
 
