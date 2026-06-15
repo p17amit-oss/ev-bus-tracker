@@ -13,14 +13,14 @@
     "estimated_value_cr": null,
     "contract_years": null,
     "issue_date": "2026-04-22",
-    "prebid_date": "2026-04-22",
+    "prebid_date": null,
     "bid_due_date": "2026-07-07",
     "status": "announced",
     "procurement_model": "gcc",
     "scheme": "PM e-Bus Sewa",
     "source_url": "http://www.convergence.co.in/public/upload/tender_pdf/x845qy239kcl5sk8ld.pdf",
     "source_key": "cesl",
-    "is_multi_city": 0,
+    "is_multi_city": 1,
     "confidence": "reported",
     "group_id": null,
     "issuing_org_id": 6,
@@ -44,6 +44,7 @@
       }
     ],
     "amendments": [],
+    "lots": [],
     "display_title": "Selection of Bus Operator for 3,604 Electric Buses under PM-eBus Sewa (Tender 3)",
     "why_it_matters": "One of the largest active e-bus tenders in India. GCC model means operator funds buses + infra; risk on ops quality and utilisation. Significant revenue visibility for winning OEM.",
     "key_risks": "Multi-city coordination risk; depot allocation by STUs; grid availability for high-capacity charging.",
@@ -59,7 +60,7 @@
     "city": null,
     "lot": "Tender 3",
     "bid_deadline": "2026-07-07",
-    "pre_bid_date": "2026-04-22",
+    "pre_bid_date": null,
     "source_date": "2026-04-22",
     "contract_model": "gcc",
     "bus_type": "standard"
@@ -68,7 +69,7 @@
     "id": 2,
     "tender_ref": "CESL/06/2025-26/PM E-Drive/252601015",
     "title": "Selection of Bus Operator for 2,900 Electric Buses under PM E-DRIVE Scheme (Tender II)",
-    "bus_count": 2900,
+    "bus_count": 6230,
     "bus_length_m": "standard",
     "ac_type": null,
     "states": [
@@ -77,7 +78,7 @@
     "cities": [],
     "estimated_value_cr": null,
     "contract_years": null,
-    "issue_date": "2026-01-01",
+    "issue_date": "2026-01-19",
     "prebid_date": null,
     "bid_due_date": "2026-04-15",
     "status": "announced",
@@ -101,14 +102,71 @@
     "source_type": "government_portal",
     "status_history": [
       {
-        "date": "2026-01-01",
-        "note": "Tender issued by CESL",
+        "date": "2026-01-19",
+        "note": "Tender issued by CESL (IFB published; date per CESL/trade-press, exact portal date unconfirmed)",
         "event_type": "issued",
         "source_url": "https://www.convergence.co.in/tender",
         "source_key": "cesl"
       }
     ],
     "amendments": [],
+    "lots": [
+      {
+        "lot_label": null,
+        "city": "Delhi",
+        "state": null,
+        "scheme": "pm_edrive",
+        "bus_count": 3330,
+        "bus_length_m": null,
+        "confidence": "reported",
+        "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+        "group_id": null
+      },
+      {
+        "lot_label": null,
+        "city": "Mumbai",
+        "state": null,
+        "scheme": "pm_edrive",
+        "bus_count": 1500,
+        "bus_length_m": null,
+        "confidence": "reported",
+        "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+        "group_id": null
+      },
+      {
+        "lot_label": null,
+        "city": "Pune",
+        "state": null,
+        "scheme": "pm_edrive",
+        "bus_count": 1000,
+        "bus_length_m": null,
+        "confidence": "reported",
+        "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+        "group_id": null
+      },
+      {
+        "lot_label": null,
+        "city": "Ahmedabad",
+        "state": null,
+        "scheme": "pm_edrive",
+        "bus_count": 200,
+        "bus_length_m": null,
+        "confidence": "reported",
+        "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+        "group_id": null
+      },
+      {
+        "lot_label": null,
+        "city": "Hyderabad",
+        "state": null,
+        "scheme": "pm_edrive",
+        "bus_count": 200,
+        "bus_length_m": null,
+        "confidence": "reported",
+        "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+        "group_id": null
+      }
+    ],
     "display_title": "Selection of Bus Operator for 2,900 Electric Buses under PM E-DRIVE Scheme (Tender II)",
     "why_it_matters": "PM E-DRIVE Tender II covers 2,900 buses plus 3,330 for Delhi (totalling 6,230). Award would be a major OEM order. Status needs monitoring.",
     "key_risks": "Bid deadline passed; award status unconfirmed. Large Delhi component adds political/regulatory complexity.",
@@ -126,7 +184,7 @@
     "lot": "Tender II",
     "bid_deadline": "2026-04-15",
     "pre_bid_date": null,
-    "source_date": "2026-01-01",
+    "source_date": "2026-01-19",
     "contract_model": "gcc",
     "bus_type": "standard"
   }

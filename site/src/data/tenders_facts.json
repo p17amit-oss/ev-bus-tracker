@@ -11,14 +11,14 @@
   "estimated_value_cr": null,
   "contract_years": null,
   "issue_date": "2026-04-22",
-  "prebid_date": "2026-04-22",
+  "prebid_date": null,
   "bid_due_date": "2026-07-07",
   "status": "announced",
   "procurement_model": "gcc",
   "scheme": "pm_ebus_sewa",
   "source_url": "http://www.convergence.co.in/public/upload/tender_pdf/x845qy239kcl5sk8ld.pdf",
   "source_key": "cesl",
-  "is_multi_city": 0,
+  "is_multi_city": 1,
   "confidence": "reported",
   "group_id": null,
   "issuing_org_id": 6,
@@ -41,20 +41,21 @@
     "source_key": "cesl"
    }
   ],
-  "amendments": []
+  "amendments": [],
+  "lots": []
  },
  {
   "id": 2,
   "tender_ref": "CESL/06/2025-26/PM E-Drive/252601015",
   "title": "134 Selection of Bus Operator for Procurement, Supply, Operation & Maintenance and Development of Allied Electric & Civil Infrastructure on Gross Cost Contracting (GCC) for 2,900 Electric Buses under PM E-DRIVE Scheme Tender-II & 3,330 for Delhi totaling to 6,230 number of electric buses. CESL/06/20",
-  "bus_count": 2900,
+  "bus_count": 6230,
   "bus_length_m": "standard",
   "ac_type": null,
   "states": "[\"Multiple states\"]",
   "cities": null,
   "estimated_value_cr": null,
   "contract_years": null,
-  "issue_date": "2026-01-01",
+  "issue_date": "2026-01-19",
   "prebid_date": null,
   "bid_due_date": "2026-04-15",
   "status": "announced",
@@ -78,13 +79,70 @@
   "source_type": "government_portal",
   "status_history": [
    {
-    "event_date": "2026-01-01",
+    "event_date": "2026-01-19",
     "event_type": "issued",
-    "details": "Tender issued by CESL",
+    "details": "Tender issued by CESL (IFB published; date per CESL/trade-press, exact portal date unconfirmed)",
     "source_url": "https://www.convergence.co.in/tender",
     "source_key": "cesl"
    }
   ],
-  "amendments": []
+  "amendments": [],
+  "lots": [
+   {
+    "lot_label": null,
+    "city": "Delhi",
+    "state": null,
+    "scheme": "pm_edrive",
+    "bus_count": 3330,
+    "bus_length_m": null,
+    "confidence": "reported",
+    "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+    "group_id": null
+   },
+   {
+    "lot_label": null,
+    "city": "Mumbai",
+    "state": null,
+    "scheme": "pm_edrive",
+    "bus_count": 1500,
+    "bus_length_m": null,
+    "confidence": "reported",
+    "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+    "group_id": null
+   },
+   {
+    "lot_label": null,
+    "city": "Pune",
+    "state": null,
+    "scheme": "pm_edrive",
+    "bus_count": 1000,
+    "bus_length_m": null,
+    "confidence": "reported",
+    "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+    "group_id": null
+   },
+   {
+    "lot_label": null,
+    "city": "Ahmedabad",
+    "state": null,
+    "scheme": "pm_edrive",
+    "bus_count": 200,
+    "bus_length_m": null,
+    "confidence": "reported",
+    "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+    "group_id": null
+   },
+   {
+    "lot_label": null,
+    "city": "Hyderabad",
+    "state": null,
+    "scheme": "pm_edrive",
+    "bus_count": 200,
+    "bus_length_m": null,
+    "confidence": "reported",
+    "coverage_boundary": "Lot split per CESL IFB as reported by Sustainable Bus / electrive, Jan 2026",
+    "group_id": null
+   }
+  ]
  }
 ]

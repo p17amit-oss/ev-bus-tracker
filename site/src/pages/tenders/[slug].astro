@@ -33,6 +33,28 @@ const daysLeft  = deadline
   ? Math.ceil((new Date(deadline).getTime() - BUILD_DATE.getTime()) / 864e5)
   : null;
 const cleanTitle = t.title.replace(/^\d+\s+/, '').trim();
+
+// Scheme display labels — same mapping the merge step applies to the
+// tender-level scheme, reused here so lot rows show 'PM E-DRIVE' rather than
+// the raw 'pm_edrive' enum. Unmapped values pass through unchanged.
+const SCHEME_LABEL: Record<string, string> = {
+  pm_ebus_sewa: 'PM e-Bus Sewa',
+  pm_edrive: 'PM E-DRIVE',
+  fame_2: 'FAME II',
+  state_funded: 'State-funded',
+  smart_city: 'Smart City',
+  other: 'Other',
+  unknown: 'Unknown',
+};
+function schemeLabel(s: string | null | undefined): string {
+  return s ? (SCHEME_LABEL[s] ?? s) : '—';
+}
+
+// Lot decomposition + self-check. lotSum is compared against the headline
+// bus_count so a future data divergence surfaces visibly rather than hiding.
+const lots: any[] = Array.isArray(t.lots) ? t.lots : [];
+const lotSum = lots.reduce((acc: number, l: any) => acc + (l.bus_count ?? 0), 0);
+const lotSumMatches = t.bus_count != null && lotSum === t.bus_count;
 ---
 <Layout
   title={`${cleanTitle.slice(0,80)} | India EV Bus Tracker`}
@@ -141,6 +163,23 @@ const cleanTitle = t.title.replace(/^\d+\s+/, '').trim();
     }
     .pro-box-body .icon { font-size: 28px; margin-bottom: 8px; }
     .pro-box-body p { font-size: 13px; color: var(--gray-500); max-width: 280px; margin: 0 auto; }
+
+    .lot-table { display: flex; flex-direction: column; }
+    .lot-row {
+      display: grid; grid-template-columns: 2fr 1fr 1.4fr; gap: 12px;
+      padding: 12px 20px; border-bottom: 1px solid var(--gray-100);
+      font-size: 13px; color: var(--gray-900); align-items: center;
+    }
+    .lot-row:last-child { border-bottom: none; }
+    .lot-head { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .5px; }
+    .lot-sub { display: block; font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+    .lot-scheme { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .lot-prov { font-size: 11px; color: var(--gray-400); cursor: help; }
+    .lot-sum {
+      padding: 12px 20px; border-top: 1px solid var(--gray-100);
+      font-size: 12px; color: var(--gray-500);
+    }
+    .lot-sum.mismatch { color: var(--amber); background: var(--amber-light); font-weight: 600; }
 
     @media (max-width: 640px) {
       .key-stats { gap: 8px; }
@@ -311,6 +350,45 @@ const cleanTitle = t.title.replace(/^\d+\s+/, '').trim();
           </div>
         )}
       </div>
+
+      <!-- Lot breakdown — only when the tender carries a city decomposition -->
+      {lots.length > 0 && (
+        <div class="fields-section">
+          <div class="sec-header">Lot Breakdown</div>
+          <div class="lot-table">
+            <div class="lot-row lot-head">
+              <div>City</div>
+              <div>Buses</div>
+              <div>Scheme</div>
+            </div>
+            {lots.map((lot: any) => (
+              <div class="lot-row">
+                <div>
+                  {lot.city ?? '—'}
+                  {(lot.lot_label || lot.state) && (
+                    <span class="lot-sub">{[lot.lot_label, lot.state].filter(Boolean).join(' · ')}</span>
+                  )}
+                </div>
+                <div>
+                  {lot.bus_count != null ? lot.bus_count.toLocaleString('en-IN') : '—'}
+                  {lot.bus_length_m && <span class="lot-sub">{lot.bus_length_m}</span>}
+                </div>
+                <div class="lot-scheme">
+                  <span class="tag tag-blue">{schemeLabel(lot.scheme)}</span>
+                  {lot.coverage_boundary && (
+                    <span class="lot-prov" title={lot.coverage_boundary}>ⓘ source</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div class={`lot-sum${lotSumMatches ? '' : ' mismatch'}`}>
+            {lotSumMatches
+              ? `✓ Lots sum to ${lotSum.toLocaleString('en-IN')} buses — matches headline total.`
+              : `⚠ Lots sum to ${lotSum.toLocaleString('en-IN')} buses but headline total is ${t.bus_count != null ? t.bus_count.toLocaleString('en-IN') : '—'}. Mismatch — data needs review.`}
+          </div>
+        </div>
+      )}
 
       <!-- Status history -->
       {t.status_history && t.status_history.length > 0 && (
