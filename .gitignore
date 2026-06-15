@@ -18,6 +18,10 @@ data/evbus.db.pre_*.db
 # Local scrape logs
 data/*.log
 
+# content-pipeline scratch virtualenv / caches (its source stays untracked for now)
+content-pipeline/venv/
+content-pipeline/__pycache__/
+
 # Local scratch
 digest.md
 .DS_Store
