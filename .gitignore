@@ -12,6 +12,12 @@ site/.astro/
 data/*.db-wal
 data/*.db-shm
 
+# Pre-migration DB backups (kept locally, never committed)
+data/evbus.db.pre_*.db
+
+# Local scrape logs
+data/*.log
+
 # Local scratch
 digest.md
 .DS_Store

@@ -18,6 +18,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = REPO_ROOT / "data" / "evbus.db"
 SCHEMA_PATH = REPO_ROOT / "db" / "schema.sql"
+SEED_PATH = REPO_ROOT / "db" / "seed.sql"
 
 # Honest, contactable UA. Scraping public data politely: identify yourself,
 # keep request rates low, and respect robots/ToS of each source.
@@ -36,12 +37,19 @@ logging.basicConfig(
 
 
 def get_db() -> sqlite3.Connection:
-    """Open the SQLite DB, creating it from schema.sql on first run."""
+    """Open the SQLite DB, creating it from schema.sql on first run.
+
+    Both scripts are idempotent: schema.sql is all CREATE ... IF NOT EXISTS,
+    and seed.sql is all INSERT OR IGNORE on unique keys. So this is safe to run
+    on every connection — it builds a fresh DB fully (schema + reference data)
+    and is a no-op against the already-populated live DB.
+    """
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA_PATH.read_text())  # idempotent (IF NOT EXISTS)
+    conn.executescript(SEED_PATH.read_text())    # idempotent (INSERT OR IGNORE)
     return conn
 
 
