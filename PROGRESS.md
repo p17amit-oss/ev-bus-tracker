@@ -162,9 +162,12 @@ visible amber flag if they ever diverge — a self-checking display.
 ## Shakedown status (the validation gate)
 
 The 7-day shakedown validates the **instrument** against the two CESL tenders
-before any new source is added.
+before any new source is added. **Full Day-7 validation record:
+[SHAKEDOWN.md](SHAKEDOWN.md).**
 
-**Done:**
+**Status: complete — all three tests resolved, Day-7 decision recorded.**
+
+**Days 1–2 — claims + corrections (done):**
 - Atomic claim list built and **verified** for both CESL tenders (DB vs
   `tenders.json` cross-check, raw_text provenance review).
 - Corrections applied as a reviewed batch (committed; DB backed up to the
@@ -180,16 +183,23 @@ before any new source is added.
   - **T1** unsourced `prebid_date` **nulled** (was a copy of `issue_date`).
   - Both tenders' `is_multi_city` corrected.
 
-**Remaining shakedown tests:**
-1. **Verifier** — a superseded document must **not** show as current (exercise
-   the `documents` / `document_diffs` version graph).
-2. **Abstention** — the product must **refuse** "who will win?" and "is my
-   company eligible?" rather than answer.
-3. **Coverage-honesty** — the methodology page must **accurately** state what
-   is scraped vs. not.
+**Gate tests (all resolved — see [SHAKEDOWN.md](SHAKEDOWN.md) for detail):**
+1. **Verifier — NOT PASSING (gap documented).** `documents`/`document_diffs`
+   modeled but empty; `is_current` defaults to 1, no trigger flips superseded
+   docs, exporter/site never filter on it. Guarantee true only by emptiness.
+   Must be closed atomically as part of the diff-engine build (cleanup item b).
+2. **Abstention — PASS (structural).** Static source-display product, no
+   query/prediction/eligibility surface; `eligibility_summary` renders sourced
+   criteria, not verdicts. Standing editorial rule recorded.
+3. **Coverage-honesty — FAILED → FIXED.** Methodology page overclaimed
+   (Vahan/GeM/5 STUs/DIMTS shown active) vs registry reality; §1/§2/§6 rewritten
+   to match `source_coverage` (commit `ca62f29`). Residual: `last_crawled_at`
+   null on every row — resolves with real timestamped scrape runs (cleanup item e).
 
-**Then:** write the **shakedown result document** as the **Day-7 validation
-record**.
+**Day-7 decision:** instrument is trustworthy for the two live CESL tenders with
+the above gaps documented. Verifier gap + `coverage.json` + `last_crawled_at`
+must be closed before/alongside scaling. **Proceed to the cleanup batch, then
+CPPP — not before.**
 
 ## Open items / known debt (flagged, not yet fixed)
 
