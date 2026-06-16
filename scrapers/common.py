@@ -79,8 +79,14 @@ class RunStats:
 
 
 @contextmanager
-def track_run(conn: sqlite3.Connection, scraper: str):
+def track_run(conn: sqlite3.Connection, scraper: str, source_key: str):
     """Record a scrape_runs row around a scraper execution.
+
+    source_key is passed explicitly (not derived from `scraper`) so the link to
+    source_coverage is intentional. It is written on INSERT and re-asserted on
+    the status UPDATE so the trg_scrape_run_update_coverage trigger — which
+    fires AFTER UPDATE OF status and requires NEW.source_key IS NOT NULL — sees
+    a non-NULL key and refreshes source_coverage.last_crawled_at / crawl_status.
 
     Status semantics:
       ok    -> ran fine and saw rows at the source
@@ -88,8 +94,8 @@ def track_run(conn: sqlite3.Connection, scraper: str):
       error -> raised; the exception is stored and re-raised so CI goes red
     """
     cur = conn.execute(
-        "INSERT INTO scrape_runs (scraper, started_at) VALUES (?, datetime('now'))",
-        (scraper,),
+        "INSERT INTO scrape_runs (scraper, source_key, started_at) VALUES (?, ?, datetime('now'))",
+        (scraper, source_key),
     )
     run_id = cur.lastrowid
     conn.commit()
@@ -100,9 +106,9 @@ def track_run(conn: sqlite3.Connection, scraper: str):
         conn.execute(
             """UPDATE scrape_runs
                SET finished_at = datetime('now'), status = 'error',
-                   rows_found = ?, rows_inserted = ?, error = ?
+                   source_key = ?, rows_found = ?, rows_inserted = ?, error = ?
                WHERE id = ?""",
-            (stats.rows_found, stats.rows_inserted, repr(exc)[:2000], run_id),
+            (source_key, stats.rows_found, stats.rows_inserted, repr(exc)[:2000], run_id),
         )
         conn.commit()
         raise
@@ -111,9 +117,9 @@ def track_run(conn: sqlite3.Connection, scraper: str):
     conn.execute(
         """UPDATE scrape_runs
            SET finished_at = datetime('now'), status = ?,
-               rows_found = ?, rows_inserted = ?, error = ?
+               source_key = ?, rows_found = ?, rows_inserted = ?, error = ?
            WHERE id = ?""",
-        (status, stats.rows_found, stats.rows_inserted, error, run_id),
+        (status, source_key, stats.rows_found, stats.rows_inserted, error, run_id),
     )
     conn.commit()
 

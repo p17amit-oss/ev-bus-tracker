@@ -6,7 +6,7 @@
   "coverage_grade": "A",
   "ingest_mode": "automated",
   "crawl_status": "ok",
-  "last_crawled_at": null,
+  "last_crawled_at": "2026-06-10 19:25:29",
   "known_gaps": "Retention window ~2 years; older filings need manual backfill."
  },
  {
@@ -16,7 +16,7 @@
   "coverage_grade": "A",
   "ingest_mode": "automated",
   "crawl_status": "ok",
-  "last_crawled_at": null,
+  "last_crawled_at": "2026-06-10 19:25:34",
   "known_gaps": "Corrigenda can overwrite originals; documents are archived on capture to mitigate."
  },
  {
@@ -135,8 +135,8 @@
   "source_type": "registry",
   "coverage_grade": "A",
   "ingest_mode": "planned",
-  "crawl_status": "never",
-  "last_crawled_at": null,
+  "crawl_status": "failed",
+  "last_crawled_at": "2026-06-15 08:00:10",
   "known_gaps": "Scraper in progress. State data revises ~3 months; trailing months re-captured."
  }
 ]

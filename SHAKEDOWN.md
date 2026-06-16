@@ -116,11 +116,18 @@ wrong, since BSE is automated too).
   current limitation to a future caveat on the planned Vahan row.
 - **DIMTS removed.** No unsubstantiated freshness claims.
 
-**Secondary gap (not yet closed):** `last_crawled_at` is **null on every
-registry row**, including the live sources. So even CESL/BSE cannot *evidence*
-freshness — the page honestly states cadence ("automated, daily") but cannot
-assert a proven last-crawl timestamp. This resolves only when the
-coverage-freshness trigger fires on a **real, timestamped scrape run**.
+**Secondary gap — RESOLVED (cleanup item e).** `last_crawled_at` was **null on
+every registry row** because `track_run()` never wrote `scrape_runs.source_key`,
+so the coverage-freshness trigger's `NEW.source_key IS NOT NULL` guard always
+failed. Fixed: `track_run` now takes an explicit `source_key` (each scraper
+passes its own), written on INSERT and re-asserted on the status UPDATE, so the
+trigger fires; existing runs were backfilled into `source_coverage` (CESL/BSE
+show real `ok` crawl dates; Vahan honestly shows `failed` at its last attempt).
+Going forward the trigger refreshes the timestamp on every run and the daily
+export carries it to `coverage.json`, so the methodology page evidences real
+freshness. **Standing caveat:** manual sources (`press`, `user_report`) have no
+scrape runs and legitimately show no crawl date — that absence is honest, not a
+bug.
 
 ## Permanent fixes deferred to the cleanup batch
 

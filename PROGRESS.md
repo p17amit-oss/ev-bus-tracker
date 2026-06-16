@@ -235,6 +235,16 @@ CPPP — not before.**
   `scrape.yml` now runs `export_json.py` + `merge_site_data.py` before
   committing and stages the JSON, gating the commit on the JSON so SQLite WAL
   churn on `data/evbus.db` can't produce empty-data commits.
+- **`last_crawled_at` real — DONE (cleanup item e).** Root cause: `track_run()`
+  never wrote `scrape_runs.source_key`, so the freshness trigger's
+  `NEW.source_key IS NOT NULL` guard always failed. Fixed by giving `track_run`
+  an explicit `source_key` param (each scraper passes its own — bse/cesl/vahan),
+  written on INSERT and re-asserted on the status UPDATE so the trigger fires.
+  Backfilled the existing runs into `source_coverage` (bse/cesl `ok` with real
+  dates; vahan honestly `failed` at its last attempt). Going forward the trigger
+  refreshes `last_crawled_at` automatically and the daily export carries it to
+  `coverage.json`. Standing caveat: manual sources (`press`, `user_report`) have
+  no scrape runs, so they legitimately show no crawl date.
 - **Garbage scraped titles.** The scraped `title` (DB / `tenders_facts.json`)
   is raw PDF-listing junk; the clean titles users see are **hand-authored
   editorial**. Honest, but **not root-fixed** — the scraper needs to extract

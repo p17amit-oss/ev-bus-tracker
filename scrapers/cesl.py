@@ -88,7 +88,7 @@ def run(headless: bool = True) -> None:
     cesl_id = upsert_org(conn, "Convergence Energy Services Ltd", "cesl", "agency",
                          website="https://www.convergence.co.in")
 
-    with track_run(conn, "cesl") as stats, sync_playwright() as pw:
+    with track_run(conn, "cesl", source_key="cesl") as stats, sync_playwright() as pw:
         browser = pw.chromium.launch(headless=headless)
         page = browser.new_page()
         rows: list[dict] = []

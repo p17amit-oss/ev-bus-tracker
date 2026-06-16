@@ -95,7 +95,7 @@ def run(days_back: int = 3) -> None:
         "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
     )
 
-    with track_run(conn, "bse") as stats:
+    with track_run(conn, "bse", source_key="bse") as stats:
         for company in cfg["companies"]:
             scrip = company.get("scrip_code")
             if not scrip:
