@@ -18,7 +18,7 @@ const BUILD_DATE = new Date('2026-06-14');
 function effectiveStatus(t: any): string {
   const declared = (t.status as string) ?? 'unknown';
   if (declared === 'awarded' || declared === 'cancelled') return declared;
-  const dl: string | null = t.bid_deadline ?? t.bid_due_date ?? null;
+  const dl: string | null = t.bid_due_date ?? null;
   if (!dl) return declared || 'unknown';
   const diffDays = Math.ceil((new Date(dl).getTime() - BUILD_DATE.getTime()) / 864e5);
   if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
@@ -297,16 +297,16 @@ const STAGE_LABELS: Record<string, string> = {
         ) : openTenders.map(t => (
           <div class="tender-item">
             <a class="tender-link" href={`/tenders/${t.slug}/`}>
-              {t.title.replace(/^\d+\s+/, '').slice(0, 140)}
+              {(t.display_title ?? t.title)?.slice(0, 140)}
             </a>
             <div class="tender-meta">
               <StatusBadge status={effectiveStatus(t)} />
               {t.bus_count && <span class="tag tag-green">{t.bus_count.toLocaleString('en-IN')} buses</span>}
-              {(t.contract_model ?? t.procurement_model) && (
-                <span class="tag tag-blue">{(t.contract_model ?? t.procurement_model)?.toUpperCase()}</span>
+              {t.procurement_model && (
+                <span class="tag tag-blue">{t.procurement_model?.toUpperCase()}</span>
               )}
-              {(t.bid_deadline ?? t.bid_due_date) && (
-                <span class="tag tag-amber">Due {t.bid_deadline ?? t.bid_due_date}</span>
+              {t.bid_due_date && (
+                <span class="tag tag-amber">Due {t.bid_due_date}</span>
               )}
             </div>
           </div>

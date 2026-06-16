@@ -14,15 +14,15 @@ Usage:
     # default output_path = site/src/data/tenders.json
     # pass a temp path to preview without touching the live site file.
 
-SITE-COMPATIBILITY LAYER
-------------------------
-The facts schema renamed/!restructured several fields the Astro pages still
-read under their old names (bid_deadline, pre_bid_date, source_date, state,
-city, lot, contract_model, the clean title, and the status_history shape).
-Rather than ship a regression, the merge derives those aliases from the facts
-so the current site renders unchanged. Each alias is commented below. The
-cleaner long-term fix is to update the Astro pages to read the native field
-names and then delete this layer — see the field-coverage notes in the PR.
+NO COMPATIBILITY LAYER
+----------------------
+The Astro pages read native field names directly (bid_due_date, prebid_date,
+issue_date, states[], cities[], lot_label, procurement_model, bus_length_m,
+scheme, and the native status_history shape). The old alias block that
+translated those to v1 names was removed once the pages were migrated. This
+merge now does only what it must: copy the facts spine, parse states/cities
+into arrays, attach editorial (display_title + judgment fields), and guarantee
+a lots[] array. Scheme display labels live on the site (site/src/lib/labels.ts).
 """
 
 from __future__ import annotations
@@ -41,21 +41,6 @@ DEFAULT_OUT = DATA_DIR / "tenders.json"
 # (it has a fallback); these are pure pass-through.
 EDITORIAL_FIELDS = ("why_it_matters", "key_risks", "eligibility_summary", "notes", "tags")
 
-# Controlled scheme value -> human display label. The site renders t.scheme
-# directly (badge, field, page description, filter dropdown), so without this
-# it would show 'pm_ebus_sewa' instead of 'PM e-Bus Sewa'. Same display-label
-# pattern as source_type->government_portal in export_json.py. Unmapped schemes
-# fall back to a title-cased best effort.
-SCHEME_LABEL = {
-    "pm_ebus_sewa": "PM e-Bus Sewa",
-    "pm_edrive": "PM E-DRIVE",
-    "fame_2": "FAME II",
-    "state_funded": "State-funded",
-    "smart_city": "Smart City",
-    "other": "Other",
-    "unknown": "Unknown",
-}
-
 
 def parse_json_array(value) -> list:
     """Parse a states/cities JSON-string column into a list. Defensive: already
@@ -70,22 +55,6 @@ def parse_json_array(value) -> list:
         return parsed if isinstance(parsed, list) else [parsed]
     except (json.JSONDecodeError, TypeError):
         return [value]
-
-
-def reshape_status_history(history: list) -> list:
-    """Map facts events (event_date/event_type/details/...) into the shape the
-    tender page renders (ev.date, ev.note), keeping the provenance fields too.
-    """
-    out = []
-    for ev in history or []:
-        out.append({
-            "date": ev.get("event_date"),          # site reads ev.date
-            "note": ev.get("details"),             # site reads ev.note
-            "event_type": ev.get("event_type"),
-            "source_url": ev.get("source_url"),
-            "source_key": ev.get("source_key"),
-        })
-    return out
 
 
 def merge_record(fact: dict, editorial: dict | None) -> dict:
@@ -106,39 +75,14 @@ def merge_record(fact: dict, editorial: dict | None) -> dict:
     for f in EDITORIAL_FIELDS:
         rec[f] = ed.get(f) if f in ed else (None if f != "tags" else [])
 
-    # --- status_history: reshape to the site's {date, note, ...} shape ---
-    rec["status_history"] = reshape_status_history(fact.get("status_history"))
-
-    # ----------------------------------------------------------------------
-    # SITE-COMPATIBILITY ALIASES (see module docstring). Each line keeps a
-    # current Astro page working without a source change. Derived only —
-    # no invented data.
-    # ----------------------------------------------------------------------
-    # Clean title: site renders t.title; the clean title now lives in editorial.
-    rec["title"] = display_title
-    # Singular state/city the detail page + search read (from the arrays).
-    rec["state"] = ", ".join(states) if states else None
-    rec["city"] = ", ".join(cities) if cities else None
-    # Lot label under the old key the detail page + search read.
-    rec["lot"] = fact.get("lot_label")
-    # City-lot decomposition (plural array, distinct from the singular scope
-    # label above). Pass through from facts; default [] for tenders with none.
+    # City-lot decomposition: ensure the plural array is always present (the
+    # spine already copies it from facts; default [] for tenders with none).
     rec["lots"] = fact.get("lots", [])
-    # Date fields the pages read under v1 names (site already ?? to *_due/etc).
-    rec["bid_deadline"] = fact.get("bid_due_date")
-    rec["pre_bid_date"] = fact.get("prebid_date")
-    rec["source_date"] = fact.get("issue_date")
-    # Contract model alias (also feeds the contract-type filter dropdown).
-    rec["contract_model"] = fact.get("procurement_model")
-    # Bus type: the page reads t.bus_type; the only value we hold is the
-    # bus_length_m column (carries 'standard' for these rows). Loose mapping —
-    # flagged for cleanup when the site moves to native field names.
-    rec["bus_type"] = fact.get("bus_length_m")
-    # Scheme display label (site renders t.scheme raw). Keep the controlled
-    # value available in tenders_facts.json; show the label on the site.
-    fact_scheme = fact.get("scheme")
-    rec["scheme"] = SCHEME_LABEL.get(fact_scheme, fact_scheme)
 
+    # status_history, scheme, dates, lot_label, bus_length_m, procurement_model,
+    # and the native title pass through unchanged from the facts spine — the
+    # Astro pages now read those native field names directly (scheme labels are
+    # applied client-side via site/src/lib/labels.ts). No compatibility aliases.
     return rec
 
 

@@ -2,7 +2,7 @@
   {
     "id": 1,
     "tender_ref": "CESL/06/2026-27/PM-eBus Sewa3/262704003",
-    "title": "Selection of Bus Operator for 3,604 Electric Buses under PM-eBus Sewa (Tender 3)",
+    "title": "2 Selection of Bus Operator for Procurement, Supply, Operation and Maintenance of 3,604 Electric Buses and Development of Allied Electric and Civil Infrastructure on Gross Cost Contracting (GCC) under PM-eBus Sewa (Tender 3) CESL/06/2026-27/PM-eBus Sewa3/262704003 1982 22-04-2026 07-07-2026 upto (15",
     "bus_count": 3604,
     "bus_length_m": "standard",
     "ac_type": null,
@@ -17,7 +17,7 @@
     "bid_due_date": "2026-07-07",
     "status": "announced",
     "procurement_model": "gcc",
-    "scheme": "PM e-Bus Sewa",
+    "scheme": "pm_ebus_sewa",
     "source_url": "http://www.convergence.co.in/public/upload/tender_pdf/x845qy239kcl5sk8ld.pdf",
     "source_key": "cesl",
     "is_multi_city": 1,
@@ -36,9 +36,9 @@
     "source_type": "government_portal",
     "status_history": [
       {
-        "date": "2026-04-22",
-        "note": "Tender issued by CESL",
+        "event_date": "2026-04-22",
         "event_type": "issued",
+        "details": "Tender issued by CESL",
         "source_url": "http://www.convergence.co.in/public/upload/tender_pdf/x845qy239kcl5sk8ld.pdf",
         "source_key": "cesl"
       }
@@ -55,20 +55,12 @@
       "gcc",
       "cesl",
       "multi-state"
-    ],
-    "state": "Multiple states",
-    "city": null,
-    "lot": "Tender 3",
-    "bid_deadline": "2026-07-07",
-    "pre_bid_date": null,
-    "source_date": "2026-04-22",
-    "contract_model": "gcc",
-    "bus_type": "standard"
+    ]
   },
   {
     "id": 2,
     "tender_ref": "CESL/06/2025-26/PM E-Drive/252601015",
-    "title": "Selection of Bus Operator for 2,900 Electric Buses under PM E-DRIVE Scheme (Tender II)",
+    "title": "134 Selection of Bus Operator for Procurement, Supply, Operation & Maintenance and Development of Allied Electric & Civil Infrastructure on Gross Cost Contracting (GCC) for 2,900 Electric Buses under PM E-DRIVE Scheme Tender-II & 3,330 for Delhi totaling to 6,230 number of electric buses. CESL/06/20",
     "bus_count": 6230,
     "bus_length_m": "standard",
     "ac_type": null,
@@ -83,7 +75,7 @@
     "bid_due_date": "2026-04-15",
     "status": "announced",
     "procurement_model": "gcc",
-    "scheme": "PM E-DRIVE",
+    "scheme": "pm_edrive",
     "source_url": "https://www.convergence.co.in/tender",
     "source_key": "cesl",
     "is_multi_city": 1,
@@ -102,9 +94,9 @@
     "source_type": "government_portal",
     "status_history": [
       {
-        "date": "2026-01-19",
-        "note": "Tender issued by CESL (IFB published; date per CESL/trade-press, exact portal date unconfirmed)",
+        "event_date": "2026-01-19",
         "event_type": "issued",
+        "details": "Tender issued by CESL (IFB published; date per CESL/trade-press, exact portal date unconfirmed)",
         "source_url": "https://www.convergence.co.in/tender",
         "source_key": "cesl"
       }
@@ -178,14 +170,6 @@
       "cesl",
       "multi-state",
       "delhi"
-    ],
-    "state": "Multiple states",
-    "city": null,
-    "lot": "Tender II",
-    "bid_deadline": "2026-04-15",
-    "pre_bid_date": null,
-    "source_date": "2026-01-19",
-    "contract_model": "gcc",
-    "bus_type": "standard"
+    ]
   }
 ]

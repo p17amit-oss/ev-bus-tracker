@@ -11,7 +11,7 @@ const BUILD_DATE = new Date('2026-06-14');
 function effectiveStatus(t: any): string {
   const declared = (t.status as string) ?? 'unknown';
   if (declared === 'awarded' || declared === 'cancelled') return declared;
-  const dl: string | null = t.bid_deadline ?? t.bid_due_date ?? null;
+  const dl: string | null = t.bid_due_date ?? null;
   if (!dl) return declared || 'unknown';
   const diffDays = Math.ceil((new Date(dl).getTime() - BUILD_DATE.getTime()) / 864e5);
   if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';

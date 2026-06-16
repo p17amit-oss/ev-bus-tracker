@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
 import tenders from '../../data/tenders.json';
+import { schemeLabel } from '../../lib/labels';
 
 export function getStaticPaths() {
   return tenders.map(t => ({
@@ -18,7 +19,7 @@ const BUILD_DATE = new Date('2026-06-14');
 function effectiveStatus(): string {
   const declared = t.status as string;
   if (declared === 'awarded' || declared === 'cancelled') return declared;
-  const dl: string | null = t.bid_deadline ?? t.bid_due_date ?? null;
+  const dl: string | null = t.bid_due_date ?? null;
   if (!dl) return declared || 'unknown';
   const deadline = new Date(dl);
   const diffDays = Math.ceil((deadline.getTime() - BUILD_DATE.getTime()) / 864e5);
@@ -28,27 +29,16 @@ function effectiveStatus(): string {
 }
 
 const effStatus = effectiveStatus();
-const deadline  = t.bid_deadline ?? t.bid_due_date ?? null;
+const deadline  = t.bid_due_date ?? null;
 const daysLeft  = deadline
   ? Math.ceil((new Date(deadline).getTime() - BUILD_DATE.getTime()) / 864e5)
   : null;
-const cleanTitle = t.title.replace(/^\d+\s+/, '').trim();
+const cleanTitle = (t.display_title ?? t.title ?? '').trim();
 
-// Scheme display labels — same mapping the merge step applies to the
-// tender-level scheme, reused here so lot rows show 'PM E-DRIVE' rather than
-// the raw 'pm_edrive' enum. Unmapped values pass through unchanged.
-const SCHEME_LABEL: Record<string, string> = {
-  pm_ebus_sewa: 'PM e-Bus Sewa',
-  pm_edrive: 'PM E-DRIVE',
-  fame_2: 'FAME II',
-  state_funded: 'State-funded',
-  smart_city: 'Smart City',
-  other: 'Other',
-  unknown: 'Unknown',
-};
-function schemeLabel(s: string | null | undefined): string {
-  return s ? (SCHEME_LABEL[s] ?? s) : '—';
-}
+// Native multi-value fields rendered as joined strings for the single-value
+// display slots on this page.
+const stateText = (t.states ?? []).join(', ');
+const cityText  = (t.cities ?? []).join(', ');
 
 // Lot decomposition + self-check. lotSum is compared against the headline
 // bus_count so a future data divergence surfaces visibly rather than hiding.
@@ -202,9 +192,9 @@ const lotSumMatches = t.bus_count != null && lotSum === t.bus_count;
     <div class="hero-inner">
       <div class="hero-badges">
         <StatusBadge status={effStatus} />
-        {t.scheme && <span class="tag tag-blue">{t.scheme}</span>}
-        {(t.contract_model ?? t.procurement_model) && (
-          <span class="tag tag-gray">{(t.contract_model ?? t.procurement_model)?.toUpperCase()}</span>
+        {t.scheme && <span class="tag tag-blue">{schemeLabel(t.scheme)}</span>}
+        {t.procurement_model && (
+          <span class="tag tag-gray">{t.procurement_model?.toUpperCase()}</span>
         )}
         <ConfidenceBadge label={t.confidence_label ?? 'unknown'} score={t.confidence_score} />
       </div>
@@ -230,7 +220,7 @@ const lotSumMatches = t.bus_count != null && lotSum === t.bus_count;
         </div>
         <div class="stat-box">
           <div class="lbl">Contract Model</div>
-          <div class="val">{(t.contract_model ?? t.procurement_model)?.toUpperCase() ?? '—'}</div>
+          <div class="val">{t.procurement_model?.toUpperCase() ?? '—'}</div>
         </div>
         <div class="stat-box">
           <div class="lbl">Charging Scope</div>
@@ -264,16 +254,16 @@ const lotSumMatches = t.bus_count != null && lotSum === t.bus_count;
           </div>
           <div class="field-item">
             <div class="field-label">Scheme</div>
-            <div class="field-value">{t.scheme ?? '—'}</div>
+            <div class="field-value">{schemeLabel(t.scheme)}</div>
           </div>
           <div class="field-item">
             <div class="field-label">State / Region</div>
-            <div class="field-value">{t.state ?? '—'}</div>
+            <div class="field-value">{stateText || '—'}</div>
           </div>
           <div class="field-item">
             <div class="field-label">City / Lot / Cluster</div>
-            <div class={`field-value${!t.city && !t.lot ? ' na' : ''}`}>
-              {t.city ?? t.lot ?? 'Not specified'}
+            <div class={`field-value${!cityText && !t.lot_label ? ' na' : ''}`}>
+              {cityText || t.lot_label || 'Not specified'}
             </div>
           </div>
           <div class="field-item">
@@ -281,12 +271,12 @@ const lotSumMatches = t.bus_count != null && lotSum === t.bus_count;
             <div class="field-value">{t.bus_count != null ? t.bus_count.toLocaleString('en-IN') : '—'}</div>
           </div>
           <div class="field-item">
-            <div class="field-label">Bus Type / Size</div>
-            <div class={`field-value${!t.bus_type ? ' na' : ''}`}>{t.bus_type ?? 'Not specified'}</div>
+            <div class="field-label">Bus Length</div>
+            <div class={`field-value${!t.bus_length_m ? ' na' : ''}`}>{t.bus_length_m ?? 'Not specified'}</div>
           </div>
           <div class="field-item">
             <div class="field-label">Contract Model</div>
-            <div class="field-value">{(t.contract_model ?? t.procurement_model)?.toUpperCase() ?? '—'}</div>
+            <div class="field-value">{t.procurement_model?.toUpperCase() ?? '—'}</div>
           </div>
           <div class="field-item">
             <div class="field-label">Contract Duration</div>
@@ -294,7 +284,7 @@ const lotSumMatches = t.bus_count != null && lotSum === t.bus_count;
           </div>
           <div class="field-item">
             <div class="field-label">Pre-bid Date</div>
-            <div class={`field-value${!t.pre_bid_date ? ' na' : ''}`}>{t.pre_bid_date ?? 'Not specified'}</div>
+            <div class={`field-value${!t.prebid_date ? ' na' : ''}`}>{t.prebid_date ?? 'Not specified'}</div>
           </div>
           <div class="field-item">
             <div class="field-label">Bid Deadline</div>
@@ -399,8 +389,8 @@ const lotSumMatches = t.bus_count != null && lotSum === t.bus_count;
               <div class="tl-item">
                 <div class={`tl-dot${i > 0 ? ' gray' : ''}`}></div>
                 <div class="tl-content">
-                  <div class="tl-date">{ev.date}</div>
-                  <div class="tl-note">{ev.note}</div>
+                  <div class="tl-date">{ev.event_date}</div>
+                  <div class="tl-note">{ev.details}</div>
                 </div>
               </div>
             ))}
@@ -425,7 +415,7 @@ const lotSumMatches = t.bus_count != null && lotSum === t.bus_count;
         <div class="source-divider" />
         <div class="source-row">
           <span>Source date:</span>
-          <strong>{t.source_date ?? '—'}</strong>
+          <strong>{t.issue_date ?? '—'}</strong>
           <span>·</span>
           <span>Last checked:</span>
           <strong>{t.last_checked_at ?? '—'}</strong>

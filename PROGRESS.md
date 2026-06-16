@@ -203,12 +203,15 @@ CPPP — not before.**
 
 ## Open items / known debt (flagged, not yet fixed)
 
-- **Merge compatibility layer.** `merge_site_data.py` contains an alias block
-  translating new field names to the old names the Astro pages still read
-  (`bid_deadline`, `pre_bid_date`, `source_date`, `state`, `city`, `lot`,
-  `contract_model`, `bus_type`, reshaped `status_history`). **Temporary debt** —
-  must be removed by migrating the pages to native field names **before adding
-  new sources**.
+- **Merge compatibility layer — DONE (cleanup item c).** The alias block in
+  `merge_site_data.py` was removed; the Astro pages now read native field names
+  directly, scheme labels live in `site/src/lib/labels.ts`, and titles use
+  `display_title ?? title`. Merge now only copies the facts spine, parses
+  states/cities to arrays, attaches editorial, and guarantees `lots[]`.
+- **Exporter should emit a clean title** so `title` is never garbage and the
+  `display_title ?? title` fallback in the pages becomes unnecessary. (Follow-on
+  to the compat-layer removal — currently the raw scraped title is still junk and
+  the clean title only exists in editorial.)
 - **Hardcoded `BUILD_DATE`** in `site/src/pages/tenders/[slug].astro` (and
   `index.astro`), currently `2026-06-14`. Status is anchored to **build time,
   not real time**. Fix to use the real run date **and** ensure a **daily
