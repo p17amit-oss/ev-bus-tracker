@@ -5,7 +5,11 @@ import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
 import tenders from '../../data/tenders.json';
 import { schemeLabel } from '../../lib/labels';
 
-const BUILD_DATE = new Date('2026-06-14');
+// Current date at build time (UTC midnight) so day-diff math stays integer-clean
+// and status reflects the real date, not a frozen build date. NOTE: a static
+// build freezes this at build time — the site must rebuild at least daily (CI)
+// or 'closing soon' / 'needs review' go stale the day after deploy.
+const BUILD_DATE = new Date(new Date().toISOString().slice(0, 10));
 
 function effectiveStatus(t: any): string {
   const declared = (t.status as string) ?? 'unknown';
