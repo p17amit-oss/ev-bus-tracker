@@ -72,6 +72,17 @@ arrive, nothing enforces it.
    **still showing superseded versions** in the diff / history view (superseded
    ≠ deleted — the version graph is the point).
 
+**SEQUENCING (confirmed): (b) gates the diff engine, NOT CPPP.** CPPP is a
+tender-**listing** aggregator — it discovers tenders, it does **not** ingest
+corrigenda or PDF documents and so **cannot supersede** anything. Adding CPPP
+therefore does not exercise the `is_current` gap: the version-graph tables stay
+empty and the guarantee remains true-by-emptiness through CPPP exactly as
+today. This is the deliberate reading of the Day-7 "before or alongside
+scaling" line — the gap is gated by the **diff-engine build** (the first
+feature that actually ingests documents and can supersede them), which is when
+real documents first appear. **(b) is confirmed deferred to the diff engine and
+is NOT a blocker for CPPP.**
+
 ## Test 2 — Abstention: **PASS (structural)**
 
 The product is a **static source-display site with client-side filtering
@@ -135,16 +146,21 @@ These are explicitly out of scope for the shakedown hand-edits and belong to the
 cleanup batch (see [PROGRESS.md](PROGRESS.md)):
 
 - **(a)** Drive the methodology page from an exported **`coverage.json`**
-  generated from `source_coverage`, so the coverage description **can never
-  drift** from the registry again.
+  generated from `source_coverage`. **DONE** (commit `99a0735`).
 - **(b)** The **`is_current` enforcement** from Test 1 (atomic supersede +
-  filtered reads + visible history).
+  filtered reads + visible history). **DEFERRED to the diff-engine build** — see
+  the sequencing note under Test 1. Not a CPPP blocker.
 - **(c)** Remove the **merge compatibility layer** (migrate Astro pages to
-  native field names).
-- **(d)** **`BUILD_DATE` → real date** in the tender pages + ensure a **daily
-  rebuild** (status currently anchored to build time, not real time).
-- **(e)** **Populate `last_crawled_at`** via real scrape runs so freshness is
-  evidenced, not assumed.
+  native field names). **DONE** (commit `66ccc3d`).
+- **(d)** **`BUILD_DATE` → real date** + **daily rebuild**. **DONE** (commits
+  `0e1af0d`, `fcad871`); one pending manual step: set the `CF_PAGES_DEPLOY_HOOK`
+  secret in GitHub.
+- **(e)** **Populate `last_crawled_at`** via real scrape runs. **DONE** (commit
+  `7d86fd7`).
+
+**Cleanup batch: CLOSED.** (a), (c), (d), (e) are done; (b) is confirmed
+deferred to the diff engine (it gates that feature, not listing-source
+expansion).
 
 ## Day-7 Decision
 
@@ -152,13 +168,17 @@ The instrument is **trustworthy for the two live CESL tenders**, with the gaps
 above documented and bounded:
 
 - **Test 1 (Verifier)** — NOT PASSING; gap documented, true-by-emptiness today.
+  Gated by the **diff-engine build**, not by CPPP (CPPP ingests no documents and
+  cannot supersede — the gap stays true-by-emptiness through CPPP).
 - **Test 2 (Abstention)** — PASS (structural), with a standing editorial rule.
-- **Test 3 (Coverage honesty)** — FAILED then FIXED; one secondary freshness
-  gap pending real scrape timestamps.
+- **Test 3 (Coverage honesty)** — FAILED then FIXED; secondary freshness gap
+  also resolved (item e).
 
-**The verifier gap (b) and the coverage.json (a) + `last_crawled_at` (e) items
-must be closed before or alongside scaling.**
+**Refined reading of "before or alongside scaling":** the verifier gap (b) gates
+the **diff engine** (the feature that can actually supersede documents), not
+listing-source expansion. The coverage.json (a) and `last_crawled_at` (e) items
+are done. So nothing blocks the next listing source.
 
-**Order of operations:** proceed to the **cleanup batch**, then the **CPPP
-scraper + grouping pipeline** — **not before**. Do not add new sources until the
-deferred items that gate trust are closed.
+**Order of operations:** the cleanup batch is **closed**. Proceed to the **CPPP
+scraper + grouping pipeline** (the next active task). Close the verifier gap (b)
+as part of the diff-engine build, when real documents first arrive.

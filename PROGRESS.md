@@ -184,10 +184,14 @@ before any new source is added. **Full Day-7 validation record:
   - Both tenders' `is_multi_city` corrected.
 
 **Gate tests (all resolved — see [SHAKEDOWN.md](SHAKEDOWN.md) for detail):**
-1. **Verifier — NOT PASSING (gap documented).** `documents`/`document_diffs`
-   modeled but empty; `is_current` defaults to 1, no trigger flips superseded
-   docs, exporter/site never filter on it. Guarantee true only by emptiness.
-   Must be closed atomically as part of the diff-engine build (cleanup item b).
+1. **Verifier — NOT PASSING (gap documented, deferred to diff engine).**
+   `documents`/`document_diffs` modeled but empty; `is_current` defaults to 1,
+   no trigger flips superseded docs, exporter/site never filter on it. Guarantee
+   true only by emptiness. **Confirmed NOT a CPPP blocker:** CPPP is a tender-
+   listing aggregator — it ingests no corrigenda/PDFs and cannot supersede
+   anything, so the gap stays true-by-emptiness through CPPP. Item (b) is gated
+   by the **diff-engine build** (the feature that ingests documents and can
+   supersede them), closed atomically there.
 2. **Abstention — PASS (structural).** Static source-display product, no
    query/prediction/eligibility surface; `eligibility_summary` renders sourced
    criteria, not verdicts. Standing editorial rule recorded.
@@ -197,9 +201,11 @@ before any new source is added. **Full Day-7 validation record:
    null on every row — resolves with real timestamped scrape runs (cleanup item e).
 
 **Day-7 decision:** instrument is trustworthy for the two live CESL tenders with
-the above gaps documented. Verifier gap + `coverage.json` + `last_crawled_at`
-must be closed before/alongside scaling. **Proceed to the cleanup batch, then
-CPPP — not before.**
+the above gaps documented. **Cleanup batch CLOSED** — (a) coverage.json, (c)
+compat-layer removal, (d) BUILD_DATE + daily rebuild, (e) last_crawled_at are all
+done; (b) verifier gap is confirmed deferred to the diff-engine build (it gates
+that feature, not listing-source expansion). **Next active task: CPPP scraper +
+grouping pipeline.**
 
 ## Open items / known debt (flagged, not yet fixed)
 
@@ -255,19 +261,28 @@ CPPP — not before.**
 
 ## Next steps (in order)
 
-1. **Finish the remaining shakedown tests** (verifier, abstention,
-   coverage-honesty) and **write the shakedown result doc** (Day-7 record).
-2. **Cleanup batch:** remove the merge compat layer (migrate pages to native
-   fields), fix `BUILD_DATE` + daily rebuild, decide on the SQL-dump-alongside.
-3. **THEN** the **CPPP scraper + grouping pipeline** — the first source that
-   actually exercises multi-source grouping.
-4. **Then the four STU portals** (DTC, BEST, BMTC, APSRTC/TSRTC), **one at a
+- **DONE — Shakedown** (Day-7 record in [SHAKEDOWN.md](SHAKEDOWN.md)): all three
+  gate tests resolved (verifier NOT PASSING but deferred to the diff engine;
+  abstention PASS; coverage FAILED→FIXED).
+- **DONE — Cleanup batch (CLOSED):** (a) coverage.json, (c) compat-layer removal,
+  (d) BUILD_DATE + daily rebuild, (e) last_crawled_at. Item (b) verifier gap is
+  deferred to the diff-engine build, NOT a CPPP blocker.
+
+1. **→ ACTIVE: CPPP scraper + grouping pipeline** — the first source that
+   actually exercises multi-source grouping. CPPP is a tender-**listing**
+   aggregator: it ingests no documents/corrigenda, so it does **not** touch the
+   `is_current` verifier gap (which stays true-by-emptiness through CPPP).
+2. **Then the four STU portals** (DTC, BEST, BMTC, APSRTC/TSRTC), **one at a
    time**, each with its **methodology row written before ingestion**.
    - **GeM** and **state e-procurement** portals are **explicitly deferred**
      (login-gated / DSC-gated / bot-defended).
+3. **Diff-engine build** (document ingestion + version graph) — closes the
+   verifier gap (b) atomically: corrigendum ingestion sets the superseded doc
+   `is_current=0` in-transaction, and exporter/site filter current reads on
+   `is_current=1` while still showing superseded versions in history.
 
-**The 7-day shakedown gates scaling. Do not add sources until the instrument
-is validated.**
+**Pending manual step (from item d):** set the `CF_PAGES_DEPLOY_HOOK` repo
+secret so `daily-rebuild.yml` can fire.
 
 ## Git state
 
