@@ -1,0 +1,142 @@
+[
+ {
+  "source_key": "bse",
+  "source_name": "BSE Corporate Announcements",
+  "source_type": "exchange",
+  "coverage_grade": "A",
+  "ingest_mode": "automated",
+  "crawl_status": "ok",
+  "last_crawled_at": null,
+  "known_gaps": "Retention window ~2 years; older filings need manual backfill."
+ },
+ {
+  "source_key": "cesl",
+  "source_name": "CESL Tender Portal",
+  "source_type": "portal",
+  "coverage_grade": "A",
+  "ingest_mode": "automated",
+  "crawl_status": "ok",
+  "last_crawled_at": null,
+  "known_gaps": "Corrigenda can overwrite originals; documents are archived on capture to mitigate."
+ },
+ {
+  "source_key": "press",
+  "source_name": "Trade press (ET Auto, Mercom, etc.)",
+  "source_type": "press",
+  "coverage_grade": "B",
+  "ingest_mode": "manual",
+  "crawl_status": "ok",
+  "last_crawled_at": null,
+  "known_gaps": "Good for large awards; smaller state tenders and corrigenda coverage incomplete."
+ },
+ {
+  "source_key": "user_report",
+  "source_name": "User-reported source",
+  "source_type": "user",
+  "coverage_grade": "C",
+  "ingest_mode": "manual",
+  "crawl_status": "ok",
+  "last_crawled_at": null,
+  "known_gaps": "Submitted via the report form; surfaced as user-reported in the source trail when resolved."
+ },
+ {
+  "source_key": "apsrtc",
+  "source_name": "APSRTC (Andhra Pradesh) tenders",
+  "source_type": "portal",
+  "coverage_grade": "B",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "Not yet indexed."
+ },
+ {
+  "source_key": "best",
+  "source_name": "BEST (Mumbai) tenders",
+  "source_type": "portal",
+  "coverage_grade": "B",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "Several BEST tenders run via Mahatenders / CESL lots. Not yet indexed."
+ },
+ {
+  "source_key": "bmtc",
+  "source_name": "BMTC (Bengaluru) tenders",
+  "source_type": "portal",
+  "coverage_grade": "B",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "Karnataka e-proc carries bid submission. Not yet indexed."
+ },
+ {
+  "source_key": "cppp",
+  "source_name": "CPPP (eprocure.gov.in)",
+  "source_type": "aggregator",
+  "coverage_grade": "B",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "Broad discovery, weak on corrigenda/awards which live on issuer portals. Not yet indexed."
+ },
+ {
+  "source_key": "dtc",
+  "source_name": "Delhi Transport Corporation tenders",
+  "source_type": "portal",
+  "coverage_grade": "B",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "STU notice page. Bid submission runs on Delhi e-proc (DSC-gated, not scraped). Not yet indexed."
+ },
+ {
+  "source_key": "gem",
+  "source_name": "GeM (Government e-Marketplace)",
+  "source_type": "aggregator",
+  "coverage_grade": "C",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "DEFERRED. Login-gated, bot-defended. Explicitly a known coverage gap for now."
+ },
+ {
+  "source_key": "lok_sabha",
+  "source_name": "Lok Sabha / Rajya Sabha Q&A",
+  "source_type": "parliamentary",
+  "coverage_grade": "B",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "High-credibility sanction/deployment figures. Keyword-triggered; pre-2022 not indexed."
+ },
+ {
+  "source_key": "state_eproc",
+  "source_name": "State e-procurement portals",
+  "source_type": "portal",
+  "coverage_grade": "C",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "DEFERRED. DSC-gated bid systems (Mahatenders, Delhi/Karnataka/AP/TS e-proc). Known gap."
+ },
+ {
+  "source_key": "tsrtc",
+  "source_name": "TSRTC (Telangana) tenders",
+  "source_type": "portal",
+  "coverage_grade": "B",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "Not yet indexed."
+ },
+ {
+  "source_key": "vahan",
+  "source_name": "Vahan Analytics Dashboard",
+  "source_type": "registry",
+  "coverage_grade": "A",
+  "ingest_mode": "planned",
+  "crawl_status": "never",
+  "last_crawled_at": null,
+  "known_gaps": "Scraper in progress. State data revises ~3 months; trailing months re-captured."
+ }
+]

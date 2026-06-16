@@ -212,6 +212,14 @@ CPPP — not before.**
   `display_title ?? title` fallback in the pages becomes unnecessary. (Follow-on
   to the compat-layer removal — currently the raw scraped title is still junk and
   the clean title only exists in editorial.)
+- **Methodology coverage data-driven — DONE (cleanup item a).** `export_json.py`
+  emits `coverage.json` from `source_coverage`; methodology §1 renders the
+  active/planned split from it (a `planned` row cannot render as active), and the
+  §2/§6 source lists derive from the active set. Can't drift from the registry.
+- **Add a `display_name` column to `source_coverage`** so methodology prose reads
+  naturally (e.g. "BSE corporate filings") instead of the raw `source_name`
+  ("BSE Corporate Announcements"). Follow-on to making the page data-driven —
+  avoids re-introducing hand-maintained strings in the page.
 - **Hardcoded `BUILD_DATE`** in `site/src/pages/tenders/[slug].astro` (and
   `index.astro`), currently `2026-06-14`. Status is anchored to **build time,
   not real time**. Fix to use the real run date **and** ensure a **daily

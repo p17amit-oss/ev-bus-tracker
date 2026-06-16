@@ -1,5 +1,35 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import coverage from '../../data/coverage.json';
+
+// The source registry drives §1 (and the source lists in §2/§6) so the
+// active/planned split can never drift from the DB. A source's section is
+// derived from ingest_mode — a 'planned' row literally cannot render as active.
+const activeSources  = coverage.filter((s: any) => s.ingest_mode === 'automated' || s.ingest_mode === 'manual');
+const plannedSources = coverage.filter((s: any) => s.ingest_mode === 'planned');
+
+// coverage_grade -> confidence label + tag class (A high, B medium, C low).
+const GRADE: Record<string, { label: string; cls: string }> = {
+  A: { label: 'High',   cls: 'tag-green' },
+  B: { label: 'Medium', cls: 'tag-amber' },
+  C: { label: 'Low',    cls: 'tag-red'   },
+};
+const gradeInfo = (g: string) => GRADE[g] ?? { label: g ?? '—', cls: 'tag-gray' };
+
+const ingestLabel = (m: string) =>
+  m === 'automated' ? 'Automated' : m === 'manual' ? 'Manual review' : 'Planned';
+
+// 'DEFERRED' is encoded at the start of known_gaps; surface it as its own chip.
+const statusLabel = (s: any) => (s.known_gaps ?? '').startsWith('DEFERRED') ? 'Deferred' : 'Planned';
+
+// last_crawled_at is null on every row today — render honestly, never imply a
+// freshness we can't evidence.
+const lastCrawl = (s: any) => s.last_crawled_at ?? 'not yet recorded';
+
+// Source lists for the §2/§6 prose, derived from the active set (not hand-named).
+const automatedNames = activeSources.filter((s: any) => s.ingest_mode === 'automated').map((s: any) => s.source_name);
+const manualNames    = activeSources.filter((s: any) => s.ingest_mode === 'manual').map((s: any) => s.source_name);
+const andList = (xs: string[]) => xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 ---
 <Layout
   title="Methodology | India EV Bus Tracker Public-Source Data"
@@ -120,46 +150,38 @@ import Layout from '../../layouts/Layout.astro';
           rather than assume it.
         </p>
 
-        <h3>Currently active sources</h3>
+        <p style="font-size:12px;color:var(--gray-400);margin-top:-4px;">
+          This table is generated from the source-coverage registry, not written by hand —
+          a source's group is derived from its ingestion mode, so a planned source cannot
+          appear as active.
+        </p>
+
+        <h3>Currently active sources ({activeSources.length})</h3>
         <p>These are the only sources currently contributing data to the tracker:</p>
         <table class="source-table">
           <thead>
             <tr>
               <th>Source</th>
-              <th>What it covers</th>
               <th>Ingestion</th>
               <th>Confidence</th>
+              <th>Last crawl</th>
+              <th>Known gaps / caveats</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td><strong>CESL tender portal</strong></td>
-              <td>convergence.co.in/tender — e-bus tenders, corrigenda, and updates</td>
-              <td>Automated</td>
-              <td><span class="tag tag-green">High</span></td>
-            </tr>
-            <tr>
-              <td><strong>BSE corporate filings</strong></td>
-              <td>Order/award announcements and disclosures from tracked OEMs (Olectra, JBM Auto, Tata Motors, Ashok Leyland, Eicher Motors)</td>
-              <td>Automated</td>
-              <td><span class="tag tag-green">High</span></td>
-            </tr>
-            <tr>
-              <td><strong>Trade press</strong></td>
-              <td>ET Auto, Business Standard, EV Reporter, Clean Technica India, etc. — useful for large awards and deployments</td>
-              <td>Manual review</td>
-              <td><span class="tag tag-amber">Medium</span></td>
-            </tr>
-            <tr>
-              <td><strong>User-reported sources</strong></td>
-              <td>Tips submitted via the report form, surfaced as "user-reported" in the source trail once resolved against a public source</td>
-              <td>Manual review</td>
-              <td><span class="tag tag-red">Low</span></td>
-            </tr>
+            {activeSources.map((s: any) => (
+              <tr>
+                <td><strong>{s.source_name}</strong></td>
+                <td>{ingestLabel(s.ingest_mode)}</td>
+                <td><span class={`tag ${gradeInfo(s.coverage_grade).cls}`}>{gradeInfo(s.coverage_grade).label}</span></td>
+                <td>{lastCrawl(s)}</td>
+                <td>{s.known_gaps ?? '—'}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
 
-        <h3>Planned sources (not yet active)</h3>
+        <h3>Planned / not yet active sources ({plannedSources.length})</h3>
         <p>
           These sources are mapped but <strong>not yet contributing any data</strong>. They are
           listed for transparency about intended coverage — no record currently comes from them,
@@ -169,36 +191,20 @@ import Layout from '../../layouts/Layout.astro';
           <thead>
             <tr>
               <th>Source</th>
-              <th>Intended coverage</th>
               <th>Status</th>
+              <th>Confidence (when live)</th>
+              <th>Notes / known gaps</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td><strong>Vahan registration analytics</strong></td>
-              <td>vahan.parivahan.gov.in — monthly EV bus registration data by maker/category (will carry a known 1–2 month reporting delay once live)</td>
-              <td><span class="tag tag-gray">Planned</span></td>
-            </tr>
-            <tr>
-              <td><strong>CPPP (eprocure.gov.in)</strong></td>
-              <td>Central public procurement portal — broad tender discovery</td>
-              <td><span class="tag tag-gray">Planned</span></td>
-            </tr>
-            <tr>
-              <td><strong>State STU portals</strong></td>
-              <td>DTC (Delhi), BEST (Mumbai), BMTC (Bengaluru), APSRTC (Andhra Pradesh), TSRTC (Telangana)</td>
-              <td><span class="tag tag-gray">Planned</span></td>
-            </tr>
-            <tr>
-              <td><strong>Parliamentary Q&amp;A</strong></td>
-              <td>Lok Sabha / Rajya Sabha questions — sanction and deployment figures</td>
-              <td><span class="tag tag-gray">Planned</span></td>
-            </tr>
-            <tr>
-              <td><strong>GeM &amp; state e-procurement</strong></td>
-              <td>Government e-Marketplace and DSC-gated state bid portals (Mahatenders, Delhi / Karnataka / AP / TS e-proc)</td>
-              <td><span class="tag tag-gray">Deferred</span></td>
-            </tr>
+            {plannedSources.map((s: any) => (
+              <tr>
+                <td><strong>{s.source_name}</strong></td>
+                <td><span class="tag tag-gray">{statusLabel(s)}</span></td>
+                <td><span class={`tag ${gradeInfo(s.coverage_grade).cls}`}>{gradeInfo(s.coverage_grade).label}</span></td>
+                <td>{s.known_gaps ?? '—'}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -208,21 +214,23 @@ import Layout from '../../layouts/Layout.astro';
         <h2>2. Collection Method</h2>
         <h3>Automated collection</h3>
         <p>
-          Automated scripts collect data on a daily cadence from two sources:
+          Automated scripts collect data on a daily cadence from
+          {automatedNames.length === 1 ? ' one source' : ` ${automatedNames.length} sources`}
+          (derived from the registry in §1):
         </p>
         <ul>
-          <li><strong>CESL tender portal</strong> — scans for new tenders and updates to existing ones</li>
-          <li><strong>BSE India API</strong> — monitors announcements from tracked OEMs (Olectra, JBM Auto, Tata Motors, Ashok Leyland, Eicher Motors) for e-bus signals</li>
+          {automatedNames.map((n: string) => <li><strong>{n}</strong></li>)}
         </ul>
         <p>
-          Vahan registration analytics is <strong>planned but not yet active</strong> — no
-          registration data is collected or shown today (see §1).
+          Any source shown as planned in §1 (e.g. Vahan registration analytics) is
+          <strong>not yet active</strong> — no data is collected or shown from it today.
         </p>
         <h3>Manual data entry</h3>
         <p>
-          Trade-press items, deployment history, OEM profiles, and state-level aggregates are
-          manually curated from public annual reports, press releases, and tender documents,
-          with cross-verification. Each record carries a <code>last_checked_at</code> date.
+          {manualNames.length > 0 && <>The following are added by <strong>manual review</strong> with cross-verification: {andList(manualNames)}. </>}
+          Alongside these, deployment history, OEM profiles, and state-level aggregates are
+          manually curated from public annual reports, press releases, and tender documents.
+          Each record carries a <code>last_checked_at</code> date.
         </p>
         <h3>Triage and staging</h3>
         <p>
@@ -355,7 +363,7 @@ import Layout from '../../layouts/Layout.astro';
         <h2>6. Limitations</h2>
         <ul>
           <li>This tracker covers publicly available data only. Confidential terms, LOA amounts, or undisclosed extensions will not appear.</li>
-          <li>Only two sources are collected automatically: the CESL tender portal and BSE corporate filings. Trade press and user reports are added by manual review; every other source listed in §1 is planned or deferred and contributes no data yet.</li>
+          <li>Only {automatedNames.length} {automatedNames.length === 1 ? 'source is' : 'sources are'} collected automatically: {andList(automatedNames)}.{manualNames.length > 0 && ` ${andList(manualNames)} ${manualNames.length === 1 ? 'is' : 'are'} added by manual review.`} Every other source listed in §1 is planned or deferred and contributes no data yet.</li>
           <li>Registration data is not yet available — the Vahan source is planned, not active. When it goes live it will carry a known 1–2 month reporting delay and may undercount fleets that register in batches.</li>
           <li>Deployment data relies on public disclosures. Not all cities with e-buses have made public announcements.</li>
           <li>State STU tender portals (DTC, BEST, BMTC, APSRTC, TSRTC) are not yet scraped. Tenders from those bodies appear only when added manually as discovered, until their scrapers are activated.</li>

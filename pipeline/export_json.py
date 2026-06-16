@@ -41,6 +41,7 @@ ALLOWED_OUTPUTS = {
     "organizations.json",
     "registrations_monthly.json",
     "deployments.json",
+    "coverage.json",
 }
 
 # Pinned slugs for tenders whose URLs are already public and must stay stable.
@@ -211,6 +212,21 @@ def main() -> None:
             LEFT JOIN organizations op ON op.id = d.operator_org_id
             LEFT JOIN organizations oe ON oe.id = d.oem_org_id
             ORDER BY d.deployment_date DESC"""),
+        # Source-coverage registry — standalone reference data the methodology
+        # page renders directly, so its active/planned split can never drift
+        # from the DB. Active sources (automated/manual) sort before planned;
+        # ties break on source_key.
+        "coverage.json": rows(conn, """
+            SELECT source_key, source_name, source_type, coverage_grade,
+                   ingest_mode, crawl_status, last_crawled_at, known_gaps
+            FROM source_coverage
+            ORDER BY CASE ingest_mode
+                       WHEN 'automated' THEN 0
+                       WHEN 'manual'    THEN 0
+                       WHEN 'planned'   THEN 1
+                       ELSE 2
+                     END,
+                     source_key"""),
     }
 
     # Safety rail: refuse to write anything outside the allowed set, so this
