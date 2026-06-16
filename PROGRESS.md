@@ -220,10 +220,21 @@ CPPP — not before.**
   naturally (e.g. "BSE corporate filings") instead of the raw `source_name`
   ("BSE Corporate Announcements"). Follow-on to making the page data-driven —
   avoids re-introducing hand-maintained strings in the page.
-- **Hardcoded `BUILD_DATE`** in `site/src/pages/tenders/[slug].astro` (and
-  `index.astro`), currently `2026-06-14`. Status is anchored to **build time,
-  not real time**. Fix to use the real run date **and** ensure a **daily
-  rebuild** so countdowns/badges don't go stale.
+- **`BUILD_DATE` real-date + daily rebuild — DONE (cleanup item d).** All five
+  tender-consuming pages now derive `BUILD_DATE` from the real build date
+  (`new Date(new Date().toISOString().slice(0,10))`, UTC-midnight), so
+  `effectiveStatus()` reflects today. CI part: `scrape.yml` now regenerates the
+  site JSON and `daily-rebuild.yml` forces a Cloudflare rebuild daily so the
+  date can't freeze on no-data days. **PENDING manual step:** set the
+  `CF_PAGES_DEPLOY_HOOK` repo secret (Cloudflare Pages deploy-hook URL) in
+  GitHub settings — `daily-rebuild.yml` fails fast until it exists.
+- **Gap-1 (found + fixed during item d):** CI never regenerated the site JSON
+  from the DB — the daily scrape committed `data/evbus.db` but not
+  `tenders_facts.json` / `tenders.json` / `coverage.json`, so scraped changes
+  never reached the site (the Astro build reads the JSON, not the DB).
+  `scrape.yml` now runs `export_json.py` + `merge_site_data.py` before
+  committing and stages the JSON, gating the commit on the JSON so SQLite WAL
+  churn on `data/evbus.db` can't produce empty-data commits.
 - **Garbage scraped titles.** The scraped `title` (DB / `tenders_facts.json`)
   is raw PDF-listing junk; the clean titles users see are **hand-authored
   editorial**. Honest, but **not root-fixed** — the scraper needs to extract

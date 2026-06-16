@@ -56,13 +56,31 @@ jobs:
         continue-on-error: true
         run: python scrapers/vahan.py || echo "::warning::Vahan skipped (geo-block expected on GH runners — use launchd on Mac)"
 
-      - name: Commit updated database
+      # Regenerate the JSON the site builds from, so scraped changes actually
+      # reach the site (the Astro build reads site/src/data/*.json, not the DB).
+      - name: Regenerate site JSON from DB
+        run: |
+          python pipeline/export_json.py
+          python pipeline/merge_site_data.py
+
+      - name: Commit updated DB + regenerated site JSON
         run: |
           git config user.name "evbus-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/evbus.db
-          git diff --cached --quiet || git commit -m "data: daily scrape $(date -u +%F)"
-          git push
+          # Gate the commit on the JSON, not the .db. Exported JSON is a pure
+          # function of the DB's *data*, so it differs only on a real change.
+          # data/evbus.db can churn from SQLite WAL/checkpoint on a read-only
+          # open (get_db runs PRAGMA journal_mode = WAL), which would otherwise
+          # produce empty "data" commits. Staging JSON first and testing it
+          # means binary-only churn never commits.
+          git add site/src/data/*.json
+          if git diff --cached --quiet; then
+            echo "No data change — skipping commit (daily-rebuild.yml keeps the site date fresh)."
+          else
+            git add data/evbus.db
+            git commit -m "data: daily scrape $(date -u +%F)"
+            git push
+          fi
 
       - name: Health-check digest
         id: digest
