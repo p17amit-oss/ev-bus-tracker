@@ -50,6 +50,10 @@ jobs:
         continue-on-error: true
         run: python scrapers/cesl.py
 
+      - name: Scrape CPPP tenders + corrigenda
+        continue-on-error: true
+        run: python scrapers/cppp.py
+
       # Vahan geo-blocks non-Indian IPs; this step is expected to fail on
       # GitHub runners. Run vahan_local.sh from your Mac via launchd instead.
       - name: Scrape Vahan registrations (Indian IP required)
