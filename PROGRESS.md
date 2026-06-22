@@ -187,10 +187,13 @@ before any new source is added. **Full Day-7 validation record:
 1. **Verifier — NOT PASSING (gap documented, deferred to diff engine).**
    `documents`/`document_diffs` modeled but empty; `is_current` defaults to 1,
    no trigger flips superseded docs, exporter/site never filter on it. Guarantee
-   true only by emptiness. **Confirmed NOT a CPPP blocker:** CPPP is a tender-
-   listing aggregator — it ingests no corrigenda/PDFs and cannot supersede
-   anything, so the gap stays true-by-emptiness through CPPP. Item (b) is gated
-   by the **diff-engine build** (the feature that ingests documents and can
+   true only by emptiness. **Confirmed NOT a CPPP blocker:** CPPP captures
+   corrigendum *events* (deadline extensions, amended terms) as `tender_events`
+   rows — handled by the existing status trigger — but does **not** populate
+   `documents` / `document_diffs` (it doesn't expose corrigendum PDFs without
+   deeper scraping). With no documents there is nothing to supersede, so the
+   `is_current` gap stays genuinely dormant through CPPP. Item (b) is gated by
+   the **diff-engine build** (the feature that ingests documents and can
    supersede them), closed atomically there.
 2. **Abstention — PASS (structural).** Static source-display product, no
    query/prediction/eligibility surface; `eligibility_summary` renders sourced
@@ -269,9 +272,11 @@ grouping pipeline.**
   deferred to the diff-engine build, NOT a CPPP blocker.
 
 1. **→ ACTIVE: CPPP scraper + grouping pipeline** — the first source that
-   actually exercises multi-source grouping. CPPP is a tender-**listing**
-   aggregator: it ingests no documents/corrigenda, so it does **not** touch the
-   `is_current` verifier gap (which stays true-by-emptiness through CPPP).
+   actually exercises multi-source grouping. CPPP captures corrigendum *events*
+   (as `tender_events`, handled by the status trigger) but does **not** populate
+   `documents` / `document_diffs`, so it does **not** touch the `is_current`
+   verifier gap — with no documents, nothing can be superseded (gap stays
+   dormant through CPPP).
 2. **Then the four STU portals** (DTC, BEST, BMTC, APSRTC/TSRTC), **one at a
    time**, each with its **methodology row written before ingestion**.
    - **GeM** and **state e-procurement** portals are **explicitly deferred**

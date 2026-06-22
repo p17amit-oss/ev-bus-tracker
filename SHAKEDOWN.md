@@ -72,16 +72,19 @@ arrive, nothing enforces it.
    **still showing superseded versions** in the diff / history view (superseded
    ≠ deleted — the version graph is the point).
 
-**SEQUENCING (confirmed): (b) gates the diff engine, NOT CPPP.** CPPP is a
-tender-**listing** aggregator — it discovers tenders, it does **not** ingest
-corrigenda or PDF documents and so **cannot supersede** anything. Adding CPPP
-therefore does not exercise the `is_current` gap: the version-graph tables stay
-empty and the guarantee remains true-by-emptiness through CPPP exactly as
-today. This is the deliberate reading of the Day-7 "before or alongside
-scaling" line — the gap is gated by the **diff-engine build** (the first
-feature that actually ingests documents and can supersede them), which is when
-real documents first appear. **(b) is confirmed deferred to the diff engine and
-is NOT a blocker for CPPP.**
+**SEQUENCING (confirmed): (b) gates the diff engine, NOT CPPP.** Reconnaissance
+confirms CPPP publicly surfaces corrigendum **events** per tender (deadline
+extensions, amended terms), so it is not strictly "no corrigenda." But CPPP
+captures those as `tender_events` rows — handled by the existing status trigger
+— and does **not** populate `documents` / `document_diffs` (it doesn't expose
+corrigendum PDFs without deeper scraping). With no documents ingested there is
+**nothing to supersede**, so the `is_current` gap stays **genuinely dormant**
+through CPPP: the version-graph tables remain empty and the guarantee holds
+true-by-emptiness exactly as today. This is the deliberate reading of the Day-7
+"before or alongside scaling" line — the gap is gated by the **diff-engine
+build** (the first feature that actually ingests documents and can supersede
+them), which is when real documents first appear. **(b) is confirmed deferred
+to the diff engine and is NOT a blocker for CPPP.**
 
 ## Test 2 — Abstention: **PASS (structural)**
 
@@ -168,8 +171,9 @@ The instrument is **trustworthy for the two live CESL tenders**, with the gaps
 above documented and bounded:
 
 - **Test 1 (Verifier)** — NOT PASSING; gap documented, true-by-emptiness today.
-  Gated by the **diff-engine build**, not by CPPP (CPPP ingests no documents and
-  cannot supersede — the gap stays true-by-emptiness through CPPP).
+  Gated by the **diff-engine build**, not by CPPP (CPPP captures corrigendum
+  events as `tender_events` but ingests no `documents`/`document_diffs`, so with
+  nothing to supersede the gap stays dormant through CPPP).
 - **Test 2 (Abstention)** — PASS (structural), with a standing editorial rule.
 - **Test 3 (Coverage honesty)** — FAILED then FIXED; secondary freshness gap
   also resolved (item e).
