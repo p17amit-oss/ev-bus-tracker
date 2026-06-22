@@ -271,12 +271,27 @@ grouping pipeline.**
   (d) BUILD_DATE + daily rebuild, (e) last_crawled_at. Item (b) verifier gap is
   deferred to the diff-engine build, NOT a CPPP blocker.
 
-1. **→ ACTIVE: CPPP scraper + grouping pipeline** — the first source that
-   actually exercises multi-source grouping. CPPP captures corrigendum *events*
-   (as `tender_events`, handled by the status trigger) but does **not** populate
-   `documents` / `document_diffs`, so it does **not** touch the `is_current`
-   verifier gap — with no documents, nothing can be superseded (gap stays
-   dormant through CPPP).
+1. **CPPP scraper — DONE; grouping pipeline → ACTIVE (next sub-task).** The
+   scraper (`scrapers/cppp.py`, commit `ef84da8`) polls CPPP's Active Tenders +
+   Corrigendum feeds via http_session + BeautifulSoup (no Playwright — server-
+   rendered HTML), keyword-filters for buses, writes tenders/events with
+   `source_key='cppp'`, runs daily in `scrape.yml` (commit `343975f`). CPPP
+   captures corrigendum *events* (handled by the status trigger) but populates
+   no `documents`/`document_diffs`, so it does **not** touch the `is_current`
+   verifier gap (stays dormant through CPPP). **Two known limits:**
+   - **Comprehensive bus discovery is a gap** — CPPP's keyword *Advanced Search*
+     is captcha-gated and not scraped; the public feeds are a rolling ~10-item
+     window, so a bus tender is only captured if it surfaces there at scrape
+     time. (Consistent with `source_coverage.cppp.known_gaps`.)
+   - **Rough `tender_ref` extraction** — the CPPP "Title/Ref/Tender Id" cell
+     duplicates ref+id; dedup keys off the cleaner trailing tender id, but the
+     stored `tender_ref` must be **eyeballed and tightened on the first live bus
+     row** (same "tighten on first real row" caveat as `cesl.py`).
+   - **→ ACTIVE next: grouping pipeline** — cluster CESL/CPPP observations of the
+     same procurement via `group_id` using the four-signal rule (scheme exact +
+     city overlap + bus_count within 2% + dates consistent; 3-of-4 → review
+     queue). Clustering, never merge. This is the first real exercise of
+     multi-source grouping.
 2. **Then the four STU portals** (DTC, BEST, BMTC, APSRTC/TSRTC), **one at a
    time**, each with its **methodology row written before ingestion**.
    - **GeM** and **state e-procurement** portals are **explicitly deferred**
