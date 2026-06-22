@@ -291,7 +291,7 @@ secret so `daily-rebuild.yml` can fire.
 - `main` is still at the **v1 rebuild** (`b31c2bd feat: v1 rebuild —
   intelligence-led tracker with full data model and all pages`).
 
-Commits on the branch (oldest → newest), ahead of `main`:
+Commits on the branch (oldest → newest), ahead of `main` — 19 with this commit:
 
 ```
 276f2e0 schema: v2 data foundation — migration, idempotent schema+seed split
@@ -302,6 +302,16 @@ Commits on the branch (oldest → newest), ahead of `main`:
 3823548 data: apply CESL tender shakedown corrections (verified batch)
 3b418bf pipeline: surface tender_lots to the site facts/merge layer
 aed3b39 site: lot-breakdown UI on tender detail page
+4b43563 docs: project progress and handoff state
+ca62f29 fix: methodology page coverage honesty — match source_coverage registry
+66c7f06 docs: 7-day shakedown validation record
+2b4e1e7 docs: cross-link shakedown record from progress
+66ccc3d refactor: remove merge compat layer — Astro pages read native fields
+99a0735 feat: drive methodology coverage from source_coverage (coverage.json)
+0e1af0d fix: derive BUILD_DATE from real date so tender status reflects today
+fcad871 ci: regenerate site JSON in scrape + daily rebuild hook
+7d86fd7 fix: populate source_coverage.last_crawled_at via scrape_runs.source_key
+dfcc91a docs: confirm verifier gap defers to diff-engine build; cleanup batch closed
 ```
 
-(Plus this `docs:` commit for PROGRESS.md.)
+(Plus this `docs: refresh git-state commit list in PROGRESS` commit — the 19th.)
