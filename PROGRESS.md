@@ -287,13 +287,26 @@ grouping pipeline.**
      duplicates ref+id; dedup keys off the cleaner trailing tender id, but the
      stored `tender_ref` must be **eyeballed and tightened on the first live bus
      row** (same "tighten on first real row" caveat as `cesl.py`).
-   - **→ ACTIVE next: grouping pipeline** — cluster CESL/CPPP observations of the
-     same procurement via `group_id` using the four-signal rule (scheme exact +
-     city overlap + bus_count within 2% + dates consistent; 3-of-4 → review
-     queue). Clustering, never merge. This is the first real exercise of
-     multi-source grouping.
-2. **Then the four STU portals** (DTC, BEST, BMTC, APSRTC/TSRTC), **one at a
-   time**, each with its **methodology row written before ingestion**.
+   - **Grouping pipeline — DONE** (`pipeline/group_tenders.py`, commit `53d7007`).
+     Detection pass evaluates all cross-source tender pairs for four signals
+     (scheme exact, city overlap, bus_count ±2%, bid_due_date ±7 days with
+     issue_date fallback). All 4 + both single-city → auto-group; 3-of-4 →
+     `grouping_suggestions` (pending); either `is_multi_city=1` → strict gate
+     (deferred, no writes). `--apply` mode applies accepted suggestions. `--fixture`
+     mode runs an in-memory DB: all four synthetic cases PASS. Live run is a clean
+     no-op (T1+T2 both `source_key='cesl'` → same-source, skipped, zero writes).
+     **Three open items:**
+     - `--apply` requires a human to SET `status='accepted'` in the DB directly
+       (e.g. `UPDATE grouping_suggestions SET status='accepted' WHERE id=?`); no
+       review UI exists yet.
+     - Lot-level multi-city grouping is **stubbed** — the gate fires and logs
+       "not yet implemented" when lots exist; unblocked once `tender_lots` is
+       populated from PDF extraction.
+     - Fixture cases live in `run_fixture()` but are not wired into a formal test
+       suite; a `pytest` test calling `run_fixture()` and asserting exit should be
+       added before the pipeline is exercised on real cross-source data.
+2. **→ ACTIVE next: four STU portals** (DTC, BEST, BMTC, APSRTC/TSRTC), **one at
+   a time**, each with its **methodology row written before ingestion**.
    - **GeM** and **state e-procurement** portals are **explicitly deferred**
      (login-gated / DSC-gated / bot-defended).
 3. **Diff-engine build** (document ingestion + version graph) — closes the
