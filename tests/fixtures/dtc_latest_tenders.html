@@ -1,0 +1,46 @@
+<!--
+  Representative sample of the Delhi NIC eProcurement (GePNIC) home-page
+  "Latest Tenders" feed, captured/derived from the live portal 2026-06-26.
+  Trimmed to the relevant feed table and given SYNTHETIC rows (no live session
+  tokens). Structure mirrors the real markup: an outer layout table, a chrome
+  row carrying the banner date, then the data table whose header is
+  "Tender Title | Reference No | Closing Date | Bid Opening Date" and whose rows
+  carry a serial-prefixed title with a $DirectLink anchor. One bus row (GCC), two
+  non-bus rows, to exercise the keyword filter.
+-->
+<html><body>
+<table width="1004" border="0" align="center">
+  <tr><td>
+    <!-- chrome row: banner date only, must be skipped (no parseable closing-date cell) -->
+    <table width="100%"><tr><td class="date">26-Jun-2026</td><td>Search | Active Tenders | Corrigendum</td></tr></table>
+
+    <table width="100%" cellpadding="2" cellspacing="1" id="table">
+      <caption>Latest Tenders updates every 15 mins.</caption>
+      <tr class="list_header">
+        <td>Tender Title</td>
+        <td>Reference No</td>
+        <td>Closing Date</td>
+        <td>Bid Opening Date</td>
+      </tr>
+      <tr class="even">
+        <td><a href="/nicgep/app?component=%24DirectLink&amp;page=Home&amp;service=direct&amp;session=T&amp;sp=SPMIu6ZcrCnv6AlCswY7P2w%3D%3D">1. NIT NO 11 item No. 8 (2026-27) Repair of building</a></td>
+        <td>NIT NO. 11 (2026-27)/EE(EnM)M-10</td>
+        <td>01-Jul-2026 03:00 PM</td>
+        <td>01-Jul-2026 03:30 PM</td>
+      </tr>
+      <tr class="odd">
+        <td><a href="/nicgep/app?component=%24DirectLink&amp;page=Home&amp;service=direct&amp;session=T&amp;sp=SbTJNMcwDx45yrxIWT1%2Fo%2Bg%3D%3D">2. NIT No. 07 (26-27) Item No. 5 Road resurfacing</a></td>
+        <td>NIT No. 07 (26-27)</td>
+        <td>01-Jul-2026 03:00 PM</td>
+        <td>01-Jul-2026 03:15 PM</td>
+      </tr>
+      <tr class="even">
+        <td><a href="/nicgep/app?component=%24DirectLink&amp;page=Home&amp;service=direct&amp;session=T&amp;sp=SjBCw42Pw1yJycVBcVYMZlg%3D%3D">3. Procurement and Operation of 100 Electric Buses on GCC (Gross Cost Contract) basis</a></td>
+        <td>DTC/EV/2026-27/05</td>
+        <td>10-Aug-2026 03:00 PM</td>
+        <td>11-Aug-2026 11:00 AM</td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>
