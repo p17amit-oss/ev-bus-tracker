@@ -317,6 +317,32 @@ grouping pipeline.**
 **Pending manual step (from item d):** set the `CF_PAGES_DEPLOY_HOOK` repo
 secret so `daily-rebuild.yml` can fire.
 
+## Backlog (from external review)
+
+Captured from an external review of the site; none change current sequencing,
+all are later considerations:
+
+- **Charging-infra as a first-class page + audience.** Schema has
+  `charging_events` but no dedicated page. The idea: surface charging
+  intelligence (bundled-into-bus-tender vs standalone, `opportunity_type`
+  CPO/EPC/charger-OEM) targeting charging companies as a potential early paying
+  audience. In-scope because it's charging bundled into bus procurement, not the
+  broader EV market. Consider after STU sources land and there's real charging
+  data to show — **do NOT build the page on sample data**.
+- **State-level rollup pages.** Per-state execution-gap view: sanctioned vs
+  tendered vs awarded vs registered vs operational, plus open tenders / active
+  OEMs / charging activity. Good differentiator and SEO surface. Build only when
+  the underlying per-state data is real, not sample.
+- **Reusable component library.** Formalize `StatusBadge`, `ConfidenceBadge`,
+  `SourceChip`, `MetricCard`, `DataTable`, `UpdateTimeline`, `EmptyState`,
+  `ComingSoonLock` as shared components when the site UI gets its proper design
+  pass. Some exist; this is a consolidation task.
+
+**Standing caution recorded with the backlog:** the external review proposed
+building States / Charging / Registrations pages now with sample/mock data. We
+reject building presentation breadth on mock data — it's the exact overclaiming
+the shakedown caught. Pages get built when their data is real.
+
 ## Git state
 
 - Working branch: **`feature/v2-data-foundation`** — **not merged to `main`,
