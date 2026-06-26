@@ -54,6 +54,10 @@ jobs:
         continue-on-error: true
         run: python scrapers/cppp.py
 
+      - name: Scrape DTC / Delhi NIC tenders
+        continue-on-error: true
+        run: python scrapers/dtc.py
+
       # Vahan geo-blocks non-Indian IPs; this step is expected to fail on
       # GitHub runners. Run vahan_local.sh from your Mac via launchd instead.
       - name: Scrape Vahan registrations (Indian IP required)
