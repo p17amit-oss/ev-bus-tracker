@@ -36,8 +36,9 @@ SCHEMA = (REPO_ROOT / "db" / "schema.sql").read_text()
 TENDERS_HTML = (FIXTURES / "dtc_latest_tenders.html").read_text()
 CORR_HTML = (FIXTURES / "dtc_latest_corrigendums.html").read_text()
 
-BUS_REF = "DTC/EV/2026-27/05"
-UNMATCHED_BUS_REF = "DTC/EV/2025-26/99"
+BUS_REF = "DTC/EV/2026-27/05"          # bus row whose ref names DTC -> issuer resolved
+UNRESOLVED_BUS_REF = "F.9(12)/2026-27/Genl"  # bus row naming no known body -> issuer unresolved
+UNMATCHED_BUS_REF = "DTC/EV/2025-26/99"  # bus corrigendum with no ingested tender -> dangling
 
 
 def _mem_db() -> sqlite3.Connection:
@@ -56,16 +57,16 @@ def _check(cond: bool, msg: str) -> None:
 
 
 def test_parse_and_filter():
-    print("1-4. parse / filter / ref / dedupe stability")
+    print("1-4. parse / filter / ref / dedupe stability / issuer resolution")
     rows = dtc.parse_listing(TENDERS_HTML)
-    _check(len(rows) == 3, f"parse_listing found 3 data rows (header+chrome skipped) — got {len(rows)}")
+    _check(len(rows) == 4, f"parse_listing found 4 data rows (header+chrome skipped) — got {len(rows)}")
 
     bus = [r for r in rows if dtc.BUS_TERMS.search(r["raw"])]
     nonbus = [r for r in rows if not dtc.BUS_TERMS.search(r["raw"])]
-    _check(len(bus) == 1, f"exactly 1 bus row passes the keyword gate — got {len(bus)}")
+    _check(len(bus) == 2, f"exactly 2 bus rows pass the keyword gate — got {len(bus)}")
     _check(len(nonbus) == 2, f"2 non-bus rows filtered out — got {len(nonbus)}")
 
-    b = bus[0]
+    b = next(r for r in bus if r["ref"] == BUS_REF)
     _check(b["ref"] == BUS_REF, f"tender_ref from Reference No cell == {BUS_REF!r} — got {b['ref']!r}")
     _check(b["title"].startswith("Procurement and Operation of 100 Electric Buses"),
            f"serial prefix stripped from title — got {b['title'][:40]!r}")
@@ -74,10 +75,18 @@ def test_parse_and_filter():
 
     # dedupe stability: same row parsed twice -> identical key
     rows2 = dtc.parse_listing(TENDERS_HTML)
-    b2 = [r for r in rows2 if dtc.BUS_TERMS.search(r["raw"])][0]
+    b2 = next(r for r in rows2 if r["ref"] == BUS_REF)
     k1 = dtc.make_dedupe(b["ref"], b["title"])
     k2 = dtc.make_dedupe(b2["ref"], b2["title"])
     _check(k1 == k2, f"dedupe_key stable across two parses — {k1} == {k2}")
+
+    # issuer resolution is driven by the row's own text, never a bare bus->DTC guess
+    _check(dtc.resolve_issuer(BUS_REF, b["title"]) == (
+        "Delhi Transport Corporation", "dtc", "transit_authority"),
+        "issuer resolved to DTC ONLY because the Reference No names 'DTC'")
+    u = next(r for r in bus if r["ref"] == UNRESOLVED_BUS_REF)
+    _check(dtc.resolve_issuer(u["ref"], u["title"]) is None,
+           f"bus row {UNRESOLVED_BUS_REF!r} names no known body -> issuer UNRESOLVED (not DTC)")
 
 
 def test_process_writes_and_idempotency():
@@ -86,20 +95,49 @@ def test_process_writes_and_idempotency():
 
     report = dtc.process(conn, dry_run=False, tenders_html=TENDERS_HTML, corr_html=CORR_HTML)
 
-    # One bus tender written with source_key='dtc'
-    trows = conn.execute("SELECT id, tender_ref, bus_count, bid_due_date, source_key FROM tenders").fetchall()
-    _check(len(trows) == 1, f"exactly 1 tender written — got {len(trows)}")
-    t = trows[0]
-    _check(t["source_key"] == "dtc", f"tender.source_key == 'dtc' — got {t['source_key']!r}")
-    _check(t["tender_ref"] == BUS_REF, f"tender.tender_ref == {BUS_REF!r} — got {t['tender_ref']!r}")
-    _check(t["bus_count"] == 100, f"bus_count parsed == 100 — got {t['bus_count']}")
-
-    # 'issued' event with source_key='dtc'
-    issued = conn.execute(
-        "SELECT source_key FROM tender_events WHERE tender_id=? AND event_type='issued'", (t["id"],)
+    # Two bus tenders written, both with source_key='dtc' (the SOURCE, not issuer)
+    trows = conn.execute(
+        "SELECT id, tender_ref, bus_count, bid_due_date, source_key, issuing_org_id FROM tenders"
     ).fetchall()
-    _check(len(issued) == 1 and issued[0]["source_key"] == "dtc",
-           "one 'issued' event written with source_key='dtc'")
+    _check(len(trows) == 2, f"exactly 2 bus tenders written (both ingested) — got {len(trows)}")
+    _check(all(r["source_key"] == "dtc" for r in trows),
+           "every tender.source_key == 'dtc' (source/portal, not issuer)")
+
+    by_ref = {r["tender_ref"]: r for r in trows}
+    _check(BUS_REF in by_ref and UNRESOLVED_BUS_REF in by_ref,
+           f"both refs ingested: {BUS_REF!r} and {UNRESOLVED_BUS_REF!r}")
+    t = by_ref[BUS_REF]
+    _check(t["bus_count"] == 100, f"bus_count parsed == 100 for {BUS_REF} — got {t['bus_count']}")
+
+    # --- issuer resolution outcomes ---
+    # Resolvable row: issuing_org_id set to the DTC org (because the ref names DTC).
+    dtc_org = conn.execute("SELECT id, name FROM organizations WHERE slug='dtc'").fetchone()
+    _check(dtc_org is not None and t["issuing_org_id"] == dtc_org["id"],
+           f"{BUS_REF}: issuer resolved to DTC org (issuing_org_id set, name={dtc_org['name']!r})")
+
+    # Unresolved row: ingested but issuing_org_id LEFT NULL, NOT presumed DTC.
+    u = by_ref[UNRESOLVED_BUS_REF]
+    _check(u["issuing_org_id"] is None,
+           f"{UNRESOLVED_BUS_REF}: ingested with issuing_org_id NULL (NOT presumed DTC)")
+
+    # ...and an 'unresolved' org_name dangling_reference points at that tender row.
+    idang = conn.execute(
+        """SELECT source_record_id, reference_type, resolution_status, referenced_entity
+           FROM dangling_references WHERE source_record_table='tenders'"""
+    ).fetchall()
+    _check(len(idang) == 1, f"exactly 1 tenders-issuer dangling row — got {len(idang)}")
+    d = idang[0]
+    _check(d["source_record_id"] == u["id"] and d["reference_type"] == "org_name"
+           and d["resolution_status"] == "unresolved" and d["referenced_entity"] == UNRESOLVED_BUS_REF,
+           "unresolved issuer logged: source_record_table='tenders', source_record_id=<tender>, "
+           "reference_type='org_name', resolution_status='unresolved'")
+
+    # Both tenders get an 'issued' event with source_key='dtc'
+    issued = conn.execute(
+        "SELECT source_key FROM tender_events WHERE event_type='issued'"
+    ).fetchall()
+    _check(len(issued) == 2 and all(e["source_key"] == "dtc" for e in issued),
+           "both tenders have an 'issued' event with source_key='dtc'")
 
     # Matched bus corrigendum -> deadline_extended + bid_due_date updated to 2026-08-20
     ext = conn.execute(
@@ -117,8 +155,8 @@ def test_process_writes_and_idempotency():
     ).fetchall()
     _check(len(dang) == 1 and dang[0]["referenced_entity"] == UNMATCHED_BUS_REF,
            f"unmatched bus corrigendum filed as dangling ({UNMATCHED_BUS_REF}), not fabricated")
-    _check(conn.execute("SELECT COUNT(*) FROM tenders").fetchone()[0] == 1,
-           "still exactly 1 tender — unmatched corrigendum did NOT create a tender")
+    _check(conn.execute("SELECT COUNT(*) FROM tenders").fetchone()[0] == 2,
+           "still exactly 2 tenders — unmatched corrigendum did NOT create a tender")
 
     # report shape
     _check(report["dangling"] and report["corr_events"],

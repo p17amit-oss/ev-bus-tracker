@@ -30,11 +30,14 @@ Comprehensive discovery stays a known gap (source_coverage.dtc.known_gaps).
 
 DECISIONS encoded here (per scoping):
   * source_key='dtc' on the run, every tenders row, and every tender_events row.
-  * issuing_org_id = Delhi Transport Corporation (presumed): the feed has no org
-    column and bus tenders on this portal are DTC's. EYEBALL-AND-TIGHTEN on the
-    first live bus row — if a bus tender turns out to be issued by another Delhi
-    body, derive the issuer from the Reference No instead. (Same "tighten on
-    first real row" caveat as cesl.py / cppp.py.)
+  * issuing_org_id is resolved ONLY from the row's own text (Reference No or
+    title naming a known Delhi body via resolve_issuer); the feed has no org
+    column, so a bare bus-keyword match is NOT presumed to be DTC. A bus row with
+    no resolvable issuer is still INGESTED (issuing_org_id LEFT NULL) and the
+    unresolved issuer is logged to dangling_references ('org_name','unresolved').
+    source_key stays 'dtc' regardless — that is the SOURCE/portal, a different
+    field from the issuer. EYEBALL-AND-TIGHTEN: extend ISSUER_PATTERNS as real
+    Delhi bus-issuer Reference-No prefixes become known.
   * Dedup scoped to "dtc" and keyed off the issuer Reference No (the only stable
     natural key in the feed). A CESL/CPPP/DTC overlap is a SEPARATE tenders row —
     grouping is a later pipeline (clustering, not merge).
@@ -63,9 +66,42 @@ PORTAL_BASE = "https://govtprocurement.delhi.gov.in"
 # Corrigendums) server-side in a single GET — no captcha on browse.
 HOME_URL = f"{PORTAL_BASE}/nicgep/app"
 
-# Issuer presumed for bus rows (feed has no org column). See module docstring.
-DTC_ORG_NAME = "Delhi Transport Corporation"
-DTC_ORG_SLUG = "dtc"
+# Issuer resolution. The feed has NO organisation column, so the issuer is only
+# resolved when the row's own text (Reference No or title) actually names a known
+# Delhi transport body. A bare bus-keyword match is NOT enough to presume DTC —
+# the portal hosts every NCT-of-Delhi department, and Delhi bus tenders also come
+# from DIMTS / DTIDC / the Transport Department. A row that matches the bus gate
+# but names no recognizable issuer is ingested with issuing_org_id LEFT NULL and
+# logged to dangling_references (reference_type='org_name', 'unresolved') for
+# later human resolution — never silently attributed to DTC.
+#
+# Each entry: (compiled pattern, org_name, org_slug, org_type). Patterns are
+# matched against the combined Reference-No + title text.
+ISSUER_PATTERNS: list[tuple[re.Pattern, str, str, str]] = [
+    (re.compile(r"\bDTC\b|Delhi Transport Corporation", re.I),
+     "Delhi Transport Corporation", "dtc", "transit_authority"),
+    (re.compile(r"\bDIMTS\b|Delhi Integrated Multi[- ]?Modal Transit", re.I),
+     "Delhi Integrated Multi-Modal Transit System", "dimts", "transit_authority"),
+    (re.compile(r"\bDTIDC\b|Delhi Transport Infrastructure Development", re.I),
+     "Delhi Transport Infrastructure Development Corporation", "dtidc", "transit_authority"),
+    (re.compile(r"Transport Department|Department of Transport", re.I),
+     "Transport Department, GNCTD", "gnctd-transport", "transit_authority"),
+]
+
+
+def resolve_issuer(ref: str | None, title: str) -> tuple[str, str, str] | None:
+    """Resolve the issuing body from the row's own text, or None if unknown.
+
+    Returns (org_name, org_slug, org_type) when the Reference No or title names a
+    recognizable Delhi transport body; otherwise None (issuer stays unresolved).
+    EYEBALL-AND-TIGHTEN on the first live bus rows: extend ISSUER_PATTERNS as the
+    real Reference-No prefixes for Delhi bus issuers become known.
+    """
+    hay = f"{ref or ''} {title or ''}"
+    for pat, name, slug, org_type in ISSUER_PATTERNS:
+        if pat.search(hay):
+            return name, slug, org_type
+    return None
 
 # Same bus keyword gate as cesl.py / cppp.py (kept identical on purpose; if this
 # pattern changes, change all three).
@@ -191,16 +227,20 @@ def process(conn, dry_run: bool, stats=None,
         bid_due = parse_nic_date(row["closing"])
         key = make_dedupe(row["ref"], row["title"])
         source_url = _abs_url(row["detail_href"]) or HOME_URL
+        issuer = resolve_issuer(row["ref"], row["title"])  # (name, slug, type) or None
         plan = {
             "tender_ref": row["ref"], "title": row["title"][:300],
-            "issuer": DTC_ORG_NAME, "bus_count": bus_count,
-            "bid_due_date": bid_due, "model": model, "source_url": source_url,
-            "dedupe_key": key, "source_key": "dtc",
+            "issuer": issuer[0] if issuer else None,
+            "issuer_resolved": issuer is not None,
+            "bus_count": bus_count, "bid_due_date": bid_due, "model": model,
+            "source_url": source_url, "dedupe_key": key, "source_key": "dtc",
         }
         report["tenders_bus"].append(plan)
         if dry_run:
             continue
-        issuer_id = upsert_org(conn, DTC_ORG_NAME, DTC_ORG_SLUG, "transit_authority")
+        # Resolve issuer only from the row's text; otherwise leave it NULL and
+        # log the unresolved issuer below (never presume DTC).
+        issuer_id = upsert_org(conn, *issuer) if issuer else None
         cur = conn.execute(
             """INSERT OR IGNORE INTO tenders
                (tender_ref, title, issuing_org_id, procurement_model,
@@ -211,12 +251,30 @@ def process(conn, dry_run: bool, stats=None,
              source_url, row["raw"], key),
         )
         if cur.rowcount:
+            tender_id = cur.lastrowid
             conn.execute(
                 """INSERT OR IGNORE INTO tender_events
                    (tender_id, event_type, details, source_url, source_key, dedupe_key)
                    VALUES (?, 'issued', 'First seen on Delhi NIC eProc latest tenders', ?, 'dtc', ?)""",
-                (cur.lastrowid, source_url, dedupe_key("dtc-issued", key)),
+                (tender_id, source_url, dedupe_key("dtc-issued", key)),
             )
+            if issuer_id is None:
+                # Ingested but issuer unknown: record the known-unknown so the
+                # gap is visible and resolvable, rather than fabricating DTC.
+                conn.execute(
+                    """INSERT INTO dangling_references
+                       (source_record_table, source_record_id, referenced_entity,
+                        reference_type, resolution_status, conflict_notes)
+                       VALUES ('tenders', ?, ?, 'org_name', 'unresolved', ?)""",
+                    (tender_id, (row["ref"] or row["title"])[:200],
+                     "Delhi NIC bus tender ingested with no resolvable issuing body "
+                     "(feed has no org column; row text named none). Resolve the issuer "
+                     "from the tender document and set tenders.issuing_org_id."),
+                )
+                report["dangling"].append({
+                    "referenced_entity": (row["ref"] or row["title"])[:200],
+                    "reason": "DTC-source bus tender with unresolved issuer",
+                })
             if stats:
                 stats.rows_inserted += 1
 
@@ -318,8 +376,9 @@ def _print_dry_run(report: dict) -> None:
     print(f"Latest Tenders feed: {report['tenders_seen']} rows seen, "
           f"{len(report['tenders_bus'])} bus-matched")
     for p in report["tenders_bus"]:
+        issuer_str = p["issuer"] if p.get("issuer_resolved") else "UNRESOLVED (issuer left NULL, dangling logged)"
         print(f"  TENDER would-insert: ref={p['tender_ref']!r} title={p['title'][:70]!r} "
-              f"issuer={p['issuer']!r} buses={p['bus_count']} bid_due={p['bid_due_date']} "
+              f"issuer={issuer_str!r} buses={p['bus_count']} bid_due={p['bid_due_date']} "
               f"model={p['model']} source_key=dtc")
     print(f"Corrigendum feed: {report['corr_seen']} rows seen, "
           f"{len(report['corr_events'])} bus-matched-to-known, "
