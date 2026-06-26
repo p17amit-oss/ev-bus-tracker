@@ -1,32 +1,37 @@
-"""DTC / Delhi NIC eProcurement (GePNIC) scraper.
+"""DTC / Delhi NIC eProcurement (GePNIC) scraper — Latest-Tenders feed only.
 
 Targets the Government of NCT of Delhi eProcurement portal
-(govtprocurement.delhi.gov.in, NIC's GePNIC system) — the CPPP-shaped, server-
-rendered "Latest Tenders" + "Latest Corrigendums" rolling listings on the portal
-home page. Plain HTML tables (no JS), so http_session + BeautifulSoup — no
-Playwright. Modeled on scrapers/cppp.py and follows the same contracts.
+(govtprocurement.delhi.gov.in, NIC's GePNIC system) — the server-rendered
+"Latest Tenders" rolling listing on the portal home page. Plain HTML (no JS), so
+http_session + BeautifulSoup — no Playwright. Modeled on scrapers/cppp.py.
 
 DTC (Delhi Transport Corporation) is the bus operator/STU whose e-bus tenders
-run on this portal; the portal itself hosts every NCT-of-Delhi department, so we
-keyword-filter for buses and treat the bus rows as DTC's. We deliberately scrape
-ONLY this NIC portal in this cut (the dtc.delhi.gov.in notice board is a
+run on this portal; the portal hosts every NCT-of-Delhi department, so we
+keyword-filter for buses. We deliberately scrape ONLY this NIC portal's
+Latest-Tenders feed in this cut (the dtc.delhi.gov.in notice board is a
 documented later addition).
 
-STRUCTURE (verified live 2026-06-26, differs from CPPP — encoded below):
-  The home-page feeds are 4-column tables:
-    Tender Title | Reference No | Closing Date | Bid Opening Date
-  i.e. title and issuer ref are ALREADY separate cells (no combined
-  Title/Ref/Id cell to split, unlike CPPP). There is NO organisation column and
-  NO numeric tender id in the feed; the row's detail link is a GePNIC
-  "$DirectLink" whose `sp=` token is SESSION-BOUND (not a stable id), so it must
-  NOT be used as a dedupe key. We therefore key dedup off the issuer Reference
-  No. Dates are 'DD-Mon-YYYY hh:mm AM/PM' (same as CPPP).
+STRUCTURE (verified live 2026-06-26): the home page renders the feed as a
+4-column listing — Tender Title | Reference No | Closing Date | Bid Opening Date
+— but the data rows live in a NESTED <table id="activeTenders"> inside marquee
+<div>s, under a header row whose own cells are the column labels. The feed
+heading ("Latest Tenders updates every 15 mins.") sits in the SAME enclosing
+table. So we anchor on that heading, take its enclosing data-bearing table, and
+read every data row once (a homepage-wide row scan would mix feeds and
+double-count across the nested layout). Dates are 'DD-Mon-YYYY hh:mm AM/PM'.
 
-COVERAGE BOUNDARY (honest): like CPPP, the home-page feeds are a rolling window
-of the most recent items. The portal's keyword Advanced Search is captcha-gated
-(a hidden captcha form on the search page) and NOT scraped, so this captures a
-bus tender only when one surfaces in the recent feed at scrape time.
-Comprehensive discovery stays a known gap (source_coverage.dtc.known_gaps).
+CORRIGENDUM FEED DROPPED (documented, not a silent drop): the portal's Latest-
+Corrigendums feed identifies tenders by the issuer NIT ref (e.g.
+'NIT No.04/2026-27/CD-11(IA)'), a DIFFERENT namespace from the Latest-Tenders
+feed's GePNIC system codes (e.g. 'T25R220484'). The two do not bridge, so a
+corrigendum cannot be linked to its parent tender by ref. Corrigendum capture is
+deferred until a real linkage mechanism exists (e.g. PDF-level parent-id
+extraction). Recorded in source_coverage.dtc.known_gaps.
+
+COVERAGE BOUNDARY (honest): the feed is a rolling window of the most recent
+items. The portal's keyword Advanced Search is captcha-gated and NOT scraped, so
+this captures a bus tender only when one surfaces in the recent feed at scrape
+time. Comprehensive discovery stays a known gap (source_coverage.dtc.known_gaps).
 
 DECISIONS encoded here (per scoping):
   * source_key='dtc' on the run, every tenders row, and every tender_events row.
@@ -38,14 +43,9 @@ DECISIONS encoded here (per scoping):
     source_key stays 'dtc' regardless — that is the SOURCE/portal, a different
     field from the issuer. EYEBALL-AND-TIGHTEN: extend ISSUER_PATTERNS as real
     Delhi bus-issuer Reference-No prefixes become known.
-  * Dedup scoped to "dtc" and keyed off the issuer Reference No (the only stable
-    natural key in the feed). A CESL/CPPP/DTC overlap is a SEPARATE tenders row —
-    grouping is a later pipeline (clustering, not merge).
-  * Corrigendum -> 'deadline_extended' (and update bid_due_date) ONLY when a new
-    closing date is explicitly parseable; otherwise 'corrigendum' (date
-    untouched); ambiguous -> 'corrigendum'.
-  * A corrigendum referencing a tender we have not ingested -> dangling_references
-    row, never a fabricated tender.
+  * Dedup scoped to 'dtc' keyed off normalized Reference No + title (NOT ref
+    alone): live data showed three distinct tenders sharing one NIT ref, the
+    distinguishing item suffix living only in the title. See make_dedupe.
 """
 
 from __future__ import annotations
@@ -62,9 +62,13 @@ from common import dedupe_key, get_db, http_session, track_run, upsert_org
 log = logging.getLogger("dtc")
 
 PORTAL_BASE = "https://govtprocurement.delhi.gov.in"
-# The portal home page renders both rolling feeds (Latest Tenders + Latest
-# Corrigendums) server-side in a single GET — no captcha on browse.
+# The portal home page renders the Latest-Tenders feed server-side in one GET —
+# no captcha on browse.
 HOME_URL = f"{PORTAL_BASE}/nicgep/app"
+
+# The feed is introduced by this heading; its enclosing data-bearing table scopes
+# exactly the Latest-Tenders feed.
+TENDERS_HEADING = re.compile(r"Latest Tenders updates", re.I)
 
 # Issuer resolution. The feed has NO organisation column, so the issuer is only
 # resolved when the row's own text (Reference No or title) actually names a known
@@ -103,6 +107,7 @@ def resolve_issuer(ref: str | None, title: str) -> tuple[str, str, str] | None:
             return name, slug, org_type
     return None
 
+
 # Same bus keyword gate as cesl.py / cppp.py (kept identical on purpose; if this
 # pattern changes, change all three).
 BUS_TERMS = re.compile(
@@ -129,94 +134,120 @@ def parse_nic_date(text: str) -> str | None:
 
 
 def normalize_title(text: str) -> str:
-    """Drop the GePNIC feed serial prefix ('5. Foo' -> 'Foo')."""
-    return SERIAL_PREFIX_RE.sub("", (text or "").strip()).strip()
-
-
-def parse_listing(html: str) -> list[dict]:
-    """Parse a GePNIC feed (Latest Tenders or Latest Corrigendums) from HTML.
-
-    Returns one dict per data row with keys:
-      title, ref, closing, opening, detail_href, raw.
-
-    Locates the feed table by its header row (the literal 'Reference No' +
-    'Closing Date' headers), then reads the 4-column data rows. The header row
-    and layout/footer rows are skipped. Kept tolerant of the portal's nested
-    layout tables: only rows with >=4 cells whose closing-date cell parses as a
-    date are treated as data rows.
-    """
-    soup = BeautifulSoup(html, "html.parser")
-    out: list[dict] = []
-    for table in soup.find_all("table"):
-        # Only parse leaf data tables. The portal wraps the feed in nested
-        # layout tables; an ancestor table's recursive text also contains the
-        # feed headers, which would double-count the inner rows. Skipping tables
-        # that themselves contain a nested <table> isolates the real data table.
-        if table.find("table") is not None:
-            continue
-        header = table.find("tr")
-        if header is None:
-            continue
-        head_text = header.get_text(" ", strip=True)
-        if "Reference No" not in head_text or "Closing Date" not in head_text:
-            continue
-        for tr in table.find_all("tr"):
-            tds = tr.find_all("td")
-            if len(tds) < 4:
-                continue  # header / layout rows
-            cells = [" ".join(td.get_text(" ", strip=True).split()) for td in tds]
-            # First 4 cells are Title | Ref | Closing | Opening. A real data row
-            # has a parseable closing date in cell 2; the header ('Closing Date')
-            # and chrome rows do not.
-            if parse_nic_date(cells[2]) is None:
-                continue
-            link = tds[0].find("a")
-            href = link.get("href") if link else None
-            out.append({
-                "title": normalize_title(cells[0]),
-                "ref": cells[1],
-                "closing": cells[2],
-                "opening": cells[3],
-                "detail_href": href,
-                "raw": " | ".join(cells[:4]),
-            })
-    return out
+    """Drop the GePNIC feed serial prefix ('5. Foo') and collapse whitespace."""
+    s = SERIAL_PREFIX_RE.sub("", (text or "").strip())
+    return re.sub(r"\s+", " ", s).strip()
 
 
 def make_dedupe(ref: str | None, title: str) -> str:
-    """Dedupe key scoped to 'dtc', keyed off the issuer Reference No.
+    """Dedupe key scoped to 'dtc', keyed off normalized Reference No + title.
 
-    The Reference No is the only stable natural key in the feed (the detail
-    link's sp= token is session-bound). Falls back to the title when a row has
-    no ref. EYEBALL-AND-TIGHTEN on the first live bus row (same caveat as
-    cesl.py / cppp.py).
+    ref+title (not ref alone) because the Reference No is NOT unique within the
+    feed — live data showed three distinct tenders sharing one NIT ref
+    ('NIT No 7 (2026-27) EE (C)-37'), the distinguishing item suffix living only
+    in the title. Title normalization (serial-prefix strip + whitespace collapse
+    + case-fold via dedupe_key) guards against trivial re-list churn
+    (whitespace/case/serial-prefix changes) producing false NEW rows.
+
+    CAVEAT: still untightened against real BUS rows — the live window had zero —
+    so revisit on the first live bus capture.
     """
-    return dedupe_key("dtc", ref or title[:300])
+    norm_ref = re.sub(r"\s+", " ", (ref or "").strip())
+    return dedupe_key("dtc", f"{norm_ref}|{normalize_title(title)}")
 
 
-def process(conn, dry_run: bool, stats=None,
-            tenders_html: str | None = None, corr_html: str | None = None):
+def _row_cells(tr) -> list[str] | None:
+    """A feed DATA row has >=4 direct cells whose closing-date cell parses.
+
+    Returns the cell texts when tr is a data row, else None. Using direct cells
+    (recursive=False) rejects the header row ('Closing Date' literal), chrome
+    rows, and nested-layout wrapper rows (one big cell spanning the feed).
+    """
+    tds = tr.find_all("td", recursive=False)
+    if len(tds) < 4:
+        return None
+    cells = [" ".join(td.get_text(" ", strip=True).split()) for td in tds]
+    if parse_nic_date(cells[2]) is None:
+        return None
+    return cells
+
+
+def _feed_container(soup):
+    """Return the nearest ancestor table that holds the Latest-Tenders rows.
+
+    GePNIC renders the feed heading and its (nested) data list inside the same
+    enclosing table; that table scopes exactly this feed.
+    """
+    node = soup.find(string=TENDERS_HEADING)
+    if node is None:
+        return None
+    anc = node
+    for _ in range(6):
+        anc = anc.find_parent(["td", "table"])
+        if anc is None:
+            return None
+        if any(_row_cells(tr) for tr in anc.find_all("tr")):
+            return anc
+    return None
+
+
+def parse_listing(html: str) -> list[dict]:
+    """Parse the GePNIC home-page Latest-Tenders feed from HTML.
+
+    Returns one dict per data row with keys: title, ref, closing, opening,
+    detail_href, raw. Scopes to the feed's enclosing table (see _feed_container)
+    and reads each physical data row once — no nested-table double-counting. The
+    header and chrome/footer rows are skipped by _row_cells.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    container = _feed_container(soup)
+    if container is None:
+        return []
+    out: list[dict] = []
+    for tr in container.find_all("tr"):
+        cells = _row_cells(tr)
+        if cells is None:
+            continue
+        link = tr.find_all("td", recursive=False)[0].find("a")
+        href = link.get("href") if link else None
+        out.append({
+            "title": normalize_title(cells[0]),
+            "ref": cells[1].strip(),
+            "closing": cells[2],
+            "opening": cells[3],
+            "detail_href": href,
+            "raw": " | ".join(cells[:4]),
+        })
+    return out
+
+
+def _abs_url(href: str | None) -> str | None:
+    if not href:
+        return None
+    if href.startswith("http"):
+        return href
+    return PORTAL_BASE + (href if href.startswith("/") else "/" + href)
+
+
+def process(conn, dry_run: bool, stats=None, tenders_html: str | None = None):
     """Core logic shared by the live run, the dry run, and the offline test.
 
-    If tenders_html / corr_html are provided, parse those instead of fetching
-    (offline/test path). Otherwise fetch both feeds live from the portal home
-    page. Writes only when dry_run is False. Returns a report dict.
+    If tenders_html is provided, parse it instead of fetching (offline/test
+    path). Otherwise fetch the Latest-Tenders feed live from the home page.
+    Writes only when dry_run is False. Returns a report dict.
+
+    Tenders-feed ONLY: the corrigendum feed is intentionally not fetched or
+    processed (non-bridging ref namespace — see module docstring).
     """
-    if tenders_html is None or corr_html is None:
+    if tenders_html is None:
         session = http_session()
         resp = session.get(HOME_URL, timeout=30)
         resp.raise_for_status()
-        # Both feeds live on the same home page; parse_listing picks each feed
-        # table by its header, so the same HTML yields both row sets.
-        tenders_html = corr_html = resp.text
+        tenders_html = resp.text
 
-    report = {"tenders_seen": 0, "tenders_bus": [], "corr_seen": 0,
-              "corr_events": [], "dangling": []}
+    report = {"tenders_seen": 0, "tenders_bus": [], "dangling": []}
 
-    # --- Latest Tenders -> tenders + 'issued' event ---
     tender_rows = parse_listing(tenders_html)
-    # The corrigendum feed shares the home page; de-dupe identical row sets so we
-    # don't double-count when tenders_html is corr_html (the live single-GET case).
     report["tenders_seen"] = len(tender_rows)
     for row in tender_rows:
         if not BUS_TERMS.search(row["raw"]):
@@ -278,81 +309,7 @@ def process(conn, dry_run: bool, stats=None,
             if stats:
                 stats.rows_inserted += 1
 
-    # --- Latest Corrigendums -> deadline_extended / corrigendum, or dangling ---
-    corr_rows = parse_listing(corr_html)
-    report["corr_seen"] = len(corr_rows)
-    for row in corr_rows:
-        if not BUS_TERMS.search(row["raw"]):
-            continue
-        key = make_dedupe(row["ref"], row["title"])
-        match = conn.execute(
-            "SELECT id, bid_due_date FROM tenders WHERE source_key = 'dtc' AND dedupe_key = ?",
-            (key,),
-        ).fetchone()
-
-        if match is None:
-            # Never fabricate a tender for an unseen corrigendum.
-            dangling = {
-                "referenced_entity": (row["ref"] or row["title"])[:200],
-                "reason": "Delhi NIC corrigendum for a tender not in our index",
-            }
-            report["dangling"].append(dangling)
-            if not dry_run:
-                exists = conn.execute(
-                    """SELECT 1 FROM dangling_references
-                       WHERE source_record_table = 'dtc_corrigendum'
-                         AND referenced_entity = ?""",
-                    (dangling["referenced_entity"],),
-                ).fetchone()
-                if not exists:
-                    conn.execute(
-                        """INSERT INTO dangling_references
-                           (source_record_table, source_record_id, referenced_entity,
-                            reference_type, resolution_status, conflict_notes)
-                           VALUES ('dtc_corrigendum', 0, ?, 'tender_ref', 'unresolved', ?)""",
-                        (dangling["referenced_entity"],
-                         "Delhi NIC corrigendum (bus-matched) for a tender not ingested; not "
-                         "materialized to avoid fabrication. Resolve when the tender is captured."),
-                    )
-            continue
-
-        new_date = parse_nic_date(row["closing"])
-        if new_date:
-            etype = "deadline_extended"
-            details = f"Bid submission closing date revised to {new_date} per Delhi NIC corrigendum"
-        else:
-            etype = "corrigendum"
-            details = "Corrigendum issued on Delhi NIC eProc (no parseable revised closing date)"
-        ev_key = dedupe_key("dtc-corr", key, new_date or row["raw"][:120])
-        report["corr_events"].append({
-            "tender_id": match["id"], "event_type": etype,
-            "new_bid_due_date": new_date if etype == "deadline_extended" else None,
-            "details": details,
-        })
-        if dry_run:
-            continue
-        cur = conn.execute(
-            """INSERT OR IGNORE INTO tender_events
-               (tender_id, event_type, event_date, details, source_url, source_key, dedupe_key)
-               VALUES (?, ?, ?, ?, ?, 'dtc', ?)""",
-            (match["id"], etype, new_date, details,
-             _abs_url(row["detail_href"]) or HOME_URL, ev_key),
-        )
-        if cur.rowcount and etype == "deadline_extended":
-            conn.execute(
-                "UPDATE tenders SET bid_due_date = ? WHERE id = ?",
-                (new_date, match["id"]),
-            )
-
     return report
-
-
-def _abs_url(href: str | None) -> str | None:
-    if not href:
-        return None
-    if href.startswith("http"):
-        return href
-    return PORTAL_BASE + (href if href.startswith("/") else "/" + href)
 
 
 def run(dry_run: bool = False) -> None:
@@ -363,37 +320,28 @@ def run(dry_run: bool = False) -> None:
         return
     with track_run(conn, "dtc", source_key="dtc") as stats:
         report = process(conn, dry_run=False, stats=stats)
-        stats.rows_found = (len(report["tenders_bus"]) + len(report["corr_events"])
-                            + len(report["dangling"]))
+        stats.rows_found = len(report["tenders_bus"]) + len(report["dangling"])
         conn.commit()
-        log.info("dtc: tenders_seen=%d bus=%d corr_seen=%d events=%d dangling=%d",
+        log.info("dtc: tenders_seen=%d bus=%d dangling=%d",
                  report["tenders_seen"], len(report["tenders_bus"]),
-                 report["corr_seen"], len(report["corr_events"]), len(report["dangling"]))
+                 len(report["dangling"]))
 
 
 def _print_dry_run(report: dict) -> None:
-    print("=== DTC / Delhi NIC DRY RUN (no writes) ===")
+    print("=== DTC / Delhi NIC DRY RUN (Latest-Tenders feed only, no writes) ===")
     print(f"Latest Tenders feed: {report['tenders_seen']} rows seen, "
           f"{len(report['tenders_bus'])} bus-matched")
     for p in report["tenders_bus"]:
-        issuer_str = p["issuer"] if p.get("issuer_resolved") else "UNRESOLVED (issuer left NULL, dangling logged)"
+        issuer_str = p["issuer"] if p.get("issuer_resolved") else "UNRESOLVED (issuer NULL, dangling logged)"
         print(f"  TENDER would-insert: ref={p['tender_ref']!r} title={p['title'][:70]!r} "
               f"issuer={issuer_str!r} buses={p['bus_count']} bid_due={p['bid_due_date']} "
               f"model={p['model']} source_key=dtc")
-    print(f"Corrigendum feed: {report['corr_seen']} rows seen, "
-          f"{len(report['corr_events'])} bus-matched-to-known, "
-          f"{len(report['dangling'])} unmatched (dangling)")
-    for e in report["corr_events"]:
-        print(f"  EVENT would-write: tender_id={e['tender_id']} type={e['event_type']} "
-              f"new_due={e['new_bid_due_date']} :: {e['details']}")
-    for d in report["dangling"]:
-        print(f"  DANGLING would-write: {d['referenced_entity']!r}")
-    if not report["tenders_bus"] and not report["corr_events"] and not report["dangling"]:
-        print("NO current bus tenders or corrigenda in the Delhi NIC recent feeds — nothing to write.")
+    if not report["tenders_bus"]:
+        print("NO current bus tenders in the Delhi NIC Latest-Tenders window — nothing to write.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Scrape Delhi NIC eProc (DTC) bus tenders")
+    parser = argparse.ArgumentParser(description="Scrape Delhi NIC eProc (DTC) bus tenders — tenders feed only")
     parser.add_argument("--dry-run", action="store_true",
                         help="fetch + parse + print intended writes; touch nothing")
     args = parser.parse_args()
