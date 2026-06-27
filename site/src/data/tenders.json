@@ -72,7 +72,7 @@
     "contract_years": null,
     "issue_date": "2026-01-19",
     "prebid_date": null,
-    "bid_due_date": "2026-04-15",
+    "bid_due_date": "2026-03-10",
     "status": "announced",
     "procurement_model": "gcc",
     "scheme": "pm_edrive",
@@ -159,11 +159,11 @@
         "group_id": null
       }
     ],
-    "display_title": "Selection of Bus Operator for 2,900 Electric Buses under PM E-DRIVE Scheme (Tender II)",
-    "why_it_matters": "PM E-DRIVE Tender II covers 2,900 buses plus 3,330 for Delhi (totalling 6,230). Award would be a major OEM order. Status needs monitoring.",
-    "key_risks": "Bid deadline passed; award status unconfirmed. Large Delhi component adds political/regulatory complexity.",
-    "eligibility_summary": "Bus operators with GCC experience. Delhi portion (3,330 buses) handled separately under same scheme.",
-    "notes": "Bid deadline passed 15 April 2026. No verified extension or award data available.",
+    "display_title": "Selection of Bus Operator for 6,230 Electric Buses under PM E-DRIVE Scheme (Tender II)",
+    "why_it_matters": "One consolidated tender for 6,230 electric buses (2,900 under PM E-DRIVE Tender-II plus 3,330 for Delhi). Bids opened 23 February 2026 and submission closed 10 March 2026; the tender is currently under bid evaluation, with multiple operators having bid across all five packages. No award confirmed. An award would be a major OEM order.",
+    "key_risks": "Under bid evaluation — no award confirmed and the evaluation timeline is not published. Large Delhi component (3,330 buses) adds political/regulatory complexity.",
+    "eligibility_summary": "Bus operators with GCC experience. Delhi portion (3,330 buses) is part of the same consolidated 6,230-bus tender.",
+    "notes": "Consolidated tender totalling 6,230 buses (2,900 PM E-DRIVE Tender-II + 3,330 Delhi). Bids opened 23 February 2026; submission closed 10 March 2026; currently under bid evaluation, no award confirmed. Verified against CESL portal, Sustainable Bus, and electrive.",
     "tags": [
       "pm-edrive",
       "gcc",
