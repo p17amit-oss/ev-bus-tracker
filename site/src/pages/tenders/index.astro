@@ -4,24 +4,13 @@ import StatusBadge from '../../components/StatusBadge.astro';
 import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
 import tenders from '../../data/tenders.json';
 import { schemeLabel } from '../../lib/labels';
+import { effectiveStatus } from '../../lib/status';
 
 // Current date at build time (UTC midnight) so day-diff math stays integer-clean
 // and status reflects the real date, not a frozen build date. NOTE: a static
 // build freezes this at build time — the site must rebuild at least daily (CI)
 // or 'closing soon' / 'needs review' go stale the day after deploy.
 const BUILD_DATE = new Date(new Date().toISOString().slice(0, 10));
-
-function effectiveStatus(t: any): string {
-  const declared = (t.status as string) ?? 'unknown';
-  if (declared === 'awarded' || declared === 'cancelled') return declared;
-  const dl: string | null = t.bid_due_date ?? null;
-  if (!dl) return declared || 'unknown';
-  const deadline = new Date(dl);
-  const diffDays = Math.ceil((deadline.getTime() - BUILD_DATE.getTime()) / 864e5);
-  if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
-  if (diffDays <= 7) return 'closing_soon';
-  return 'open';
-}
 
 function daysLabel(dl: string | null): string {
   if (!dl) return '—';
@@ -34,7 +23,7 @@ function daysLabel(dl: string | null): string {
 
 const enriched = tenders.map(t => ({
   ...t,
-  effStatus: effectiveStatus(t),
+  effStatus: effectiveStatus(t, BUILD_DATE),
   daysDelta: daysLabel(t.bid_due_date ?? null),
 }));
 

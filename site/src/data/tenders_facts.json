@@ -58,7 +58,7 @@
   "issue_date": "2026-01-19",
   "prebid_date": null,
   "bid_due_date": "2026-03-10",
-  "status": "announced",
+  "status": "bids_opened",
   "procurement_model": "gcc",
   "scheme": "pm_edrive",
   "source_url": "https://www.convergence.co.in/tender",
@@ -82,6 +82,13 @@
     "event_date": "2026-01-19",
     "event_type": "issued",
     "details": "Tender issued by CESL (IFB published; date per CESL/trade-press, exact portal date unconfirmed)",
+    "source_url": "https://www.convergence.co.in/tender",
+    "source_key": "cesl"
+   },
+   {
+    "event_date": "2026-02-23",
+    "event_type": "bids_opened",
+    "details": "Techno-commercial bids opened (per CESL portal + trade press: Sustainable Bus, electrive).",
     "source_url": "https://www.convergence.co.in/tender",
     "source_key": "cesl"
    }

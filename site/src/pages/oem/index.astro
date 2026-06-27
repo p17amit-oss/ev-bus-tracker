@@ -4,6 +4,7 @@ import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
 import organizations from '../../data/organizations.json';
 import tenders from '../../data/tenders.json';
 import deployments from '../../data/deployments.json';
+import { effectiveStatus } from '../../lib/status';
 
 const oems = organizations.filter(o => o.org_type === 'oem');
 
@@ -12,22 +13,13 @@ const oems = organizations.filter(o => o.org_type === 'oem');
 // build freezes this at build time — the site must rebuild at least daily (CI)
 // or 'closing soon' / 'needs review' go stale the day after deploy.
 const BUILD_DATE = new Date(new Date().toISOString().slice(0, 10));
-function effectiveStatus(t: any): string {
-  const declared = (t.status as string) ?? 'unknown';
-  if (declared === 'awarded' || declared === 'cancelled') return declared;
-  const dl: string | null = t.bid_due_date ?? null;
-  if (!dl) return declared || 'unknown';
-  const diffDays = Math.ceil((new Date(dl).getTime() - BUILD_DATE.getTime()) / 864e5);
-  if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
-  return diffDays <= 7 ? 'closing_soon' : 'open';
-}
 
 const oemCards = oems.map(o => {
   const deps = deployments.filter(d => d.oem_name === o.name);
   const totalDeployed = deps.reduce((s, d) => s + (d.bus_count ?? 0), 0);
   const cities  = [...new Set(deps.map(d => d.city).filter(Boolean))]  as string[];
   const openT   = tenders.filter(t =>
-    ['open','closing_soon'].includes(effectiveStatus(t)) &&
+    ['open','closing_soon'].includes(effectiveStatus(t, BUILD_DATE)) &&
     (t.issuing_org_id === o.id || t.issuer_slug === o.slug)
   ).length;
   return { ...o, totalDeployed, cities, openTenders: openT };

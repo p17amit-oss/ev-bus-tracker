@@ -4,6 +4,7 @@ import StatusBadge from '../../components/StatusBadge.astro';
 import ConfidenceBadge from '../../components/ConfidenceBadge.astro';
 import tenders from '../../data/tenders.json';
 import { schemeLabel } from '../../lib/labels';
+import { effectiveStatus } from '../../lib/status';
 
 export function getStaticPaths() {
   return tenders.map(t => ({
@@ -20,19 +21,7 @@ const { tender: t } = Astro.props as { tender: any };
 // or 'closing soon' / 'needs review' go stale the day after deploy.
 const BUILD_DATE = new Date(new Date().toISOString().slice(0, 10));
 
-function effectiveStatus(): string {
-  const declared = t.status as string;
-  if (declared === 'awarded' || declared === 'cancelled') return declared;
-  const dl: string | null = t.bid_due_date ?? null;
-  if (!dl) return declared || 'unknown';
-  const deadline = new Date(dl);
-  const diffDays = Math.ceil((deadline.getTime() - BUILD_DATE.getTime()) / 864e5);
-  if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
-  if (diffDays <= 7) return 'closing_soon';
-  return 'open';
-}
-
-const effStatus = effectiveStatus();
+const effStatus = effectiveStatus(t, BUILD_DATE);
 const deadline  = t.bid_due_date ?? null;
 const daysLeft  = deadline
   ? Math.ceil((new Date(deadline).getTime() - BUILD_DATE.getTime()) / 864e5)

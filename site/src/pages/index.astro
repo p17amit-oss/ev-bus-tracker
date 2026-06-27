@@ -9,6 +9,7 @@ import charging from '../data/charging_infra.json';
 import activity from '../data/activity_feed.json';
 import states from '../data/states.json';
 import registrations from '../data/registrations_monthly.json';
+import { effectiveStatus } from '../lib/status';
 
 // Current date at build time (UTC midnight) so day-diff math stays integer-clean
 // and status reflects the real date, not a frozen build date. NOTE: a static
@@ -16,20 +17,8 @@ import registrations from '../data/registrations_monthly.json';
 // or 'closing soon' / 'needs review' go stale the day after deploy.
 const BUILD_DATE = new Date(new Date().toISOString().slice(0, 10));
 
-function effectiveStatus(t: any): string {
-  const declared = (t.status as string) ?? 'unknown';
-  if (declared === 'awarded' || declared === 'cancelled') return declared;
-  const dl: string | null = t.bid_due_date ?? null;
-  if (!dl) return declared || 'unknown';
-  const deadline = new Date(dl);
-  const diffDays = Math.ceil((deadline.getTime() - BUILD_DATE.getTime()) / 864e5);
-  if (diffDays < 0) return declared === 'extended' ? 'extended' : 'needs_review';
-  if (diffDays <= 7) return 'closing_soon';
-  return 'open';
-}
-
 const oems = organizations.filter(o => o.org_type === 'oem');
-const enriched = tenders.map(t => ({ ...t, effStatus: effectiveStatus(t) }));
+const enriched = tenders.map(t => ({ ...t, effStatus: effectiveStatus(t, BUILD_DATE) }));
 const openTenders = enriched.filter(t => ['open','closing_soon'].includes(t.effStatus));
 const needsReview = enriched.filter(t => t.effStatus === 'needs_review');
 const totalBusesInPlay = openTenders.reduce((s, t) => s + (t.bus_count ?? 0), 0);
