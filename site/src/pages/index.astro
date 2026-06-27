@@ -10,12 +10,16 @@ import activity from '../data/activity_feed.json';
 import states from '../data/states.json';
 import registrations from '../data/registrations_monthly.json';
 
-const BUILD_DATE = new Date('2026-06-14');
+// Current date at build time (UTC midnight) so day-diff math stays integer-clean
+// and status reflects the real date, not a frozen build date. NOTE: a static
+// build freezes this at build time — the site must rebuild at least daily (CI)
+// or 'closing soon' / 'needs review' go stale the day after deploy.
+const BUILD_DATE = new Date(new Date().toISOString().slice(0, 10));
 
 function effectiveStatus(t: any): string {
   const declared = (t.status as string) ?? 'unknown';
   if (declared === 'awarded' || declared === 'cancelled') return declared;
-  const dl: string | null = t.bid_deadline ?? t.bid_due_date ?? null;
+  const dl: string | null = t.bid_due_date ?? null;
   if (!dl) return declared || 'unknown';
   const deadline = new Date(dl);
   const diffDays = Math.ceil((deadline.getTime() - BUILD_DATE.getTime()) / 864e5);
@@ -302,16 +306,16 @@ const jsonLd = {
           ) : openTenders.map(t => (
             <div class="t-item">
               <a class="t-link" href={`/tenders/${t.slug}/`}>
-                {t.title.replace(/^\d+\s+/, '').slice(0, 100)}
+                {(t.display_title ?? t.title)?.slice(0, 100)}
               </a>
               <div class="t-meta">
                 <StatusBadge status={t.effStatus} />
                 {t.bus_count && <span class="tag tag-green">{t.bus_count.toLocaleString('en-IN')} buses</span>}
-                {(t.contract_model ?? t.procurement_model) && (
-                  <span class="tag tag-gray">{(t.contract_model ?? t.procurement_model)?.toUpperCase()}</span>
+                {t.procurement_model && (
+                  <span class="tag tag-gray">{t.procurement_model?.toUpperCase()}</span>
                 )}
-                {(t.bid_deadline ?? t.bid_due_date) && (
-                  <span class="tag tag-amber">Due {t.bid_deadline ?? t.bid_due_date}</span>
+                {t.bid_due_date && (
+                  <span class="tag tag-amber">Due {t.bid_due_date}</span>
                 )}
               </div>
             </div>
@@ -332,13 +336,13 @@ const jsonLd = {
           ) : needsReview.map(t => (
             <div class="t-item">
               <a class="t-link" href={`/tenders/${t.slug}/`}>
-                {t.title.replace(/^\d+\s+/, '').slice(0, 100)}
+                {(t.display_title ?? t.title)?.slice(0, 100)}
               </a>
               <div class="t-meta">
                 <StatusBadge status={t.effStatus} />
                 {t.bus_count && <span class="tag tag-gray">{t.bus_count.toLocaleString('en-IN')} buses</span>}
-                {(t.bid_deadline ?? t.bid_due_date) && (
-                  <span class="tag tag-amber">Deadline: {t.bid_deadline ?? t.bid_due_date}</span>
+                {t.bid_due_date && (
+                  <span class="tag tag-amber">Deadline: {t.bid_due_date}</span>
                 )}
               </div>
             </div>

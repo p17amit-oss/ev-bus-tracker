@@ -1,0 +1,20 @@
+{
+  "CESL/06/2026-27/PM-eBus Sewa3/262704003": {
+    "slug": "cesl-pm-ebus-sewa-3-3604",
+    "display_title": "Selection of Bus Operator for 3,604 Electric Buses under PM-eBus Sewa (Tender 3)",
+    "why_it_matters": "One of the largest active e-bus tenders in India. GCC model means operator funds buses + infra; risk on ops quality and utilisation. Significant revenue visibility for winning OEM.",
+    "key_risks": "Multi-city coordination risk; depot allocation by STUs; grid availability for high-capacity charging.",
+    "eligibility_summary": "Bus operators with experience in GCC-model electric bus operations. Qualification criteria specified in RFQ document.",
+    "notes": null,
+    "tags": ["pm-ebus-sewa", "gcc", "cesl", "multi-state"]
+  },
+  "CESL/06/2025-26/PM E-Drive/252601015": {
+    "slug": "cesl-pm-edrive-2-2900",
+    "display_title": "Selection of Bus Operator for 2,900 Electric Buses under PM E-DRIVE Scheme (Tender II)",
+    "why_it_matters": "PM E-DRIVE Tender II covers 2,900 buses plus 3,330 for Delhi (totalling 6,230). Award would be a major OEM order. Status needs monitoring.",
+    "key_risks": "Bid deadline passed; award status unconfirmed. Large Delhi component adds political/regulatory complexity.",
+    "eligibility_summary": "Bus operators with GCC experience. Delhi portion (3,330 buses) handled separately under same scheme.",
+    "notes": "Bid deadline passed 15 April 2026. No verified extension or award data available.",
+    "tags": ["pm-edrive", "gcc", "cesl", "multi-state", "delhi"]
+  }
+}

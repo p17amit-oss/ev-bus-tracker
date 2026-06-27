@@ -1,0 +1,35 @@
+# Forces a Cloudflare Pages rebuild once a day so the site's build-time "today"
+# (BUILD_DATE in the tender pages) stays current and tender statuses
+# (open / closing_soon / needs_review) don't go stale between data changes.
+# Without this, a no-data day means no push, no Cloudflare build, and a frozen
+# BUILD_DATE — the exact bug cleanup item (d) is closing.
+#
+# REQUIRES a repository secret: CF_PAGES_DEPLOY_HOOK — the Cloudflare Pages
+# "Deploy hook" URL for this project. THIS IS A MANUAL SETUP STEP you must do:
+#   1. Cloudflare Pages > (project) > Settings > Builds & deployments
+#      > Deploy hooks > Create deploy hook > copy the URL.
+#   2. GitHub > repo > Settings > Secrets and variables > Actions
+#      > New repository secret > name: CF_PAGES_DEPLOY_HOOK, value: <that URL>.
+# Until the secret exists, this workflow fails fast with a clear error.
+name: daily-rebuild
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 08:30 IST — ~30 min after the 02:30 UTC daily scrape
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Cloudflare Pages rebuild
+        run: |
+          if [ -z "${{ secrets.CF_PAGES_DEPLOY_HOOK }}" ]; then
+            echo "::error::CF_PAGES_DEPLOY_HOOK secret not set — see this workflow's header for setup."
+            exit 1
+          fi
+          curl -fsS -X POST "${{ secrets.CF_PAGES_DEPLOY_HOOK }}"

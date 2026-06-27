@@ -133,7 +133,7 @@ def run(year: int | None = None, headless: bool = True) -> None:
     target_year = year or date.today().year
     current_month = f"{date.today().year}-{date.today().month:02d}"
 
-    with track_run(conn, "vahan") as stats, sync_playwright() as pw:
+    with track_run(conn, "vahan", source_key="vahan") as stats, sync_playwright() as pw:
         browser = pw.chromium.launch(headless=headless)
         page = browser.new_page(viewport={"width": 1600, "height": 1000})
         try:

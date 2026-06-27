@@ -88,7 +88,7 @@ def run(headless: bool = True) -> None:
     cesl_id = upsert_org(conn, "Convergence Energy Services Ltd", "cesl", "agency",
                          website="https://www.convergence.co.in")
 
-    with track_run(conn, "cesl") as stats, sync_playwright() as pw:
+    with track_run(conn, "cesl", source_key="cesl") as stats, sync_playwright() as pw:
         browser = pw.chromium.launch(headless=headless)
         page = browser.new_page()
         rows: list[dict] = []
@@ -132,8 +132,8 @@ def run(headless: bool = True) -> None:
                 """INSERT OR IGNORE INTO tenders
                    (tender_ref, title, issuing_org_id, procurement_model,
                     bus_count, bid_due_date, status, source_url, raw_text,
-                    dedupe_key)
-                   VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)""",
+                    source_key, dedupe_key)
+                   VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, 'cesl', ?)""",
                 (tender_ref, text[:300], cesl_id, model, bus_count,
                  last_date(text), href or base_url, text, key),
             )
