@@ -1,7 +1,8 @@
 # PROGRESS — ev-bus-tracker
 
 > Handoff state for a fresh session. Confirmed against the repo on branch
-> `feature/v2-data-foundation`. Read this top-to-bottom before touching anything.
+> `main` (merged from `feature/v2-data-foundation`, merge commit `763a806`).
+> Read this top-to-bottom before touching anything.
 
 > **Employment-context constraint (read first).** This project is built on
 > **personal time, personal devices, and personal accounts only**, using
