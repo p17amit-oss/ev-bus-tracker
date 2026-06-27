@@ -138,6 +138,28 @@ as an understated provenance tooltip, and prints a **Σ-check line**: a quiet
 confirmation when the lot bus_counts sum to the headline `bus_count`, and a
 visible amber flag if they ever diverge — a self-checking display.
 
+### Scrapers + grouping pipeline (wired to production)
+
+- **CESL** (`scrapers/cesl.py`) — original source; carries the two live tenders.
+- **CPPP** (`scrapers/cppp.py`) — Active Tenders + Corrigendum feeds, bus-filtered,
+  `source_key='cppp'`; runs daily in `scrape.yml`; confirmed executing live
+  (scrape_runs row written, `last_crawled_at` refreshed). Zero bus rows in the
+  current rolling window.
+- **DTC / Delhi NIC** (`scrapers/dtc.py`) — **built, tested against real live NIC
+  HTML** (feed-scoped parser over the real GePNIC markup fixture in
+  `tests/test_dtc.py`), **wired into `scrape.yml`**, and **confirmed executing
+  live** (scrape_runs row written, `last_crawled_at` updated, `crawl_status` ok).
+  **Zero bus rows in the current window** — the dedupe key (normalized ref+title)
+  and issuer resolution are **untightened against real bus data** and will
+  auto-flag via `dangling_references` on first capture. **Corrigendum feed
+  dropped**: the Latest-Corrigendums feed uses issuer NIT refs, a non-bridging
+  namespace vs the Latest-Tenders feed's GePNIC system codes, so corrigenda can't
+  be linked to their parent tender by ref — documented in
+  `source_coverage.dtc.known_gaps`.
+- **Grouping pipeline** (`pipeline/group_tenders.py`) — four-signal detection +
+  `--apply` + `--fixture`; live run is a clean no-op (both CESL tenders are
+  same-source). Lot-level multi-city grouping stubbed pending PDF extraction.
+
 ## Standing decisions (do not re-litigate)
 
 - **Clustering, not merge.** Multiple source observations of the same
@@ -177,9 +199,10 @@ before any new source is added. **Full Day-7 validation record:
   - **T2** `bus_count` `2900` → **`6230`** (2,900 PM E-DRIVE + 3,330 Delhi)
     with a **5-city lot breakdown** (Delhi 3330, Mumbai 1500, Pune 1000,
     Ahmedabad 200, Hyderabad 200 — sums to 6230).
-  - **T2** bid-deadline conflict (DB `2026-04-15` vs press `2026-03-10`,
-    opening `2026-02-23`) **flagged in `dangling_references`, NOT resolved** —
-    needs the **primary CESL document** to settle.
+  - **T2** bid-deadline conflict — **RESOLVED 2026-06-28**: deadline confirmed
+    **`2026-03-10`** per CESL portal + Sustainable Bus + electrive (3 independent
+    sources); the `2026-04-15` value was erroneous. `dangling_references` row
+    `id=1` set to `resolution_status='resolved'`. No longer an open item.
   - **T1** unsourced `prebid_date` **nulled** (was a copy of `issue_date`).
   - Both tenders' `is_multi_city` corrected.
 
@@ -234,9 +257,9 @@ grouping pipeline.**
   (`new Date(new Date().toISOString().slice(0,10))`, UTC-midnight), so
   `effectiveStatus()` reflects today. CI part: `scrape.yml` now regenerates the
   site JSON and `daily-rebuild.yml` forces a Cloudflare rebuild daily so the
-  date can't freeze on no-data days. **PENDING manual step:** set the
-  `CF_PAGES_DEPLOY_HOOK` repo secret (Cloudflare Pages deploy-hook URL) in
-  GitHub settings — `daily-rebuild.yml` fails fast until it exists.
+  date can't freeze on no-data days. **DONE (2026-06-28):** the
+  `CF_PAGES_DEPLOY_HOOK` repo secret is set and confirmed green on manual
+  dispatch; `daily-rebuild.yml` fires nightly at 03:00 UTC.
 - **Gap-1 (found + fixed during item d):** CI never regenerated the site JSON
   from the DB — the daily scrape committed `data/evbus.db` but not
   `tenders_facts.json` / `tenders.json` / `coverage.json`, so scraped changes
@@ -261,61 +284,40 @@ grouping pipeline.**
 - **Binary DB commit reviewability.** `data/evbus.db` is committed as a binary
   blob, so diffs are opaque in review. **Consider committing a SQL dump
   alongside** for readable diffs.
+- **T2 display bug — RESOLVED 2026-06-28.** T2 had been surfacing an incorrect
+  bus count / deadline / status across the homepage feed, charging page, and
+  editorial. Corrected to **6,230 buses**, deadline **`2026-03-10`**, with
+  editorial prose updated to "submission closed, under bid evaluation, no award
+  confirmed." All surfaces verified consistent on the live site.
+- **Deploy pipeline — RESOLVED 2026-06-28 (build success ≠ deployment).** The
+  Cloudflare **Workers** project (deploy command was `npx astro build` — a
+  no-op that only rebuilds) **silently failed to deploy for 17+ days while every
+  build showed green**. Deleted 2026-06-28 and replaced by a Cloudflare **Pages**
+  project with auto-publish (no deploy command needed). **Lesson: always verify
+  the LIVE URL, not just the build log, as the acceptance test.**
 
 ## Next steps (in order)
 
-- **DONE — Shakedown** (Day-7 record in [SHAKEDOWN.md](SHAKEDOWN.md)): all three
-  gate tests resolved (verifier NOT PASSING but deferred to the diff engine;
-  abstention PASS; coverage FAILED→FIXED).
-- **DONE — Cleanup batch (CLOSED):** (a) coverage.json, (c) compat-layer removal,
-  (d) BUILD_DATE + daily rebuild, (e) last_crawled_at. Item (b) verifier gap is
-  deferred to the diff-engine build, NOT a CPPP blocker.
-
-1. **CPPP scraper — DONE; grouping pipeline → ACTIVE (next sub-task).** The
-   scraper (`scrapers/cppp.py`, commit `ef84da8`) polls CPPP's Active Tenders +
-   Corrigendum feeds via http_session + BeautifulSoup (no Playwright — server-
-   rendered HTML), keyword-filters for buses, writes tenders/events with
-   `source_key='cppp'`, runs daily in `scrape.yml` (commit `343975f`). CPPP
-   captures corrigendum *events* (handled by the status trigger) but populates
-   no `documents`/`document_diffs`, so it does **not** touch the `is_current`
-   verifier gap (stays dormant through CPPP). **Two known limits:**
-   - **Comprehensive bus discovery is a gap** — CPPP's keyword *Advanced Search*
-     is captcha-gated and not scraped; the public feeds are a rolling ~10-item
-     window, so a bus tender is only captured if it surfaces there at scrape
-     time. (Consistent with `source_coverage.cppp.known_gaps`.)
-   - **Rough `tender_ref` extraction** — the CPPP "Title/Ref/Tender Id" cell
-     duplicates ref+id; dedup keys off the cleaner trailing tender id, but the
-     stored `tender_ref` must be **eyeballed and tightened on the first live bus
-     row** (same "tighten on first real row" caveat as `cesl.py`).
-   - **Grouping pipeline — DONE** (`pipeline/group_tenders.py`, commit `53d7007`).
-     Detection pass evaluates all cross-source tender pairs for four signals
-     (scheme exact, city overlap, bus_count ±2%, bid_due_date ±7 days with
-     issue_date fallback). All 4 + both single-city → auto-group; 3-of-4 →
-     `grouping_suggestions` (pending); either `is_multi_city=1` → strict gate
-     (deferred, no writes). `--apply` mode applies accepted suggestions. `--fixture`
-     mode runs an in-memory DB: all four synthetic cases PASS. Live run is a clean
-     no-op (T1+T2 both `source_key='cesl'` → same-source, skipped, zero writes).
-     **Three open items:**
-     - `--apply` requires a human to SET `status='accepted'` in the DB directly
-       (e.g. `UPDATE grouping_suggestions SET status='accepted' WHERE id=?`); no
-       review UI exists yet.
-     - Lot-level multi-city grouping is **stubbed** — the gate fires and logs
-       "not yet implemented" when lots exist; unblocked once `tender_lots` is
-       populated from PDF extraction.
-     - Fixture cases live in `run_fixture()` but are not wired into a formal test
-       suite; a `pytest` test calling `run_fixture()` and asserting exit should be
-       added before the pipeline is exercised on real cross-source data.
-2. **→ ACTIVE next: four STU portals** (DTC, BEST, BMTC, APSRTC/TSRTC), **one at
-   a time**, each with its **methodology row written before ingestion**.
-   - **GeM** and **state e-procurement** portals are **explicitly deferred**
-     (login-gated / DSC-gated / bot-defended).
-3. **Diff-engine build** (document ingestion + version graph) — closes the
-   verifier gap (b) atomically: corrigendum ingestion sets the superseded doc
-   `is_current=0` in-transaction, and exporter/site filter current reads on
-   `is_current=1` while still showing superseded versions in history.
-
-**Pending manual step (from item d):** set the `CF_PAGES_DEPLOY_HOOK` repo
-secret so `daily-rebuild.yml` can fire.
+1. **`under_evaluation` status model** — `effectiveStatus()` has no state
+   between "deadline passed" and "awarded." T2 badge shows `needs_review` while
+   prose correctly says "under bid evaluation." Design entry trigger (bid-opening
+   event), exit trigger (award/cancel), and decay rule (how long before a silent
+   under-evaluation tender decays to genuine needs_review), then implement
+   across: DB event vocab, status trigger, `effectiveStatus()`, badge rendering,
+   editorial. **First task next session.**
+2. **Notification on first bus capture** — CPPP and DTC run autonomously to
+   production. First real bus row (and first cross-source grouping opportunity)
+   will land silently. Daily scrape commit message or run log should surface
+   "N new tenders, M new dangling_references" so the event is visible.
+3. **BEST / BMTC / APSRTC** — next STU portals after DTC, one at a time,
+   methodology row before scraper (standing rule).
+4. **Lot-level grouping** — stubbed pending PDF extraction → `tender_lots`
+   population. The actual bottleneck for grouping on real corpus (both CESL
+   tenders are multi-city; auto-group path doesn't apply to them).
+5. **Diff engine** — document ingestion + version graph, closes the verifier
+   gap (b) atomically.
+6. **Backlog** (from external review, do not build on mock data): charging
+   page, state rollups, component library — gated on real data existing first.
 
 ## Backlog (from external review)
 
@@ -345,10 +347,10 @@ the shakedown caught. Pages get built when their data is real.
 
 ## Git state
 
-- Working branch: **`feature/v2-data-foundation`** — **not merged to `main`,
-  not deployed**.
-- `main` is still at the **v1 rebuild** (`b31c2bd feat: v1 rebuild —
-  intelligence-led tracker with full data model and all pages`).
-
-Run `git log --oneline main..HEAD` for the current commit list (branch is ahead
-of `main`; exact count changes each session).
+- Working branch: **`main`** — merged from `feature/v2-data-foundation`
+  (merge commit `763a806`). Feature branch no longer exists.
+- Deployed via **Cloudflare Pages** (Pages project, not Workers).
+  Auto-deploys on every push to main. Old Workers project deleted.
+- Live at: https://ev-bus-tracker.pages.dev — verified correct post-merge.
+- Deploy hook: `CF_PAGES_DEPLOY_HOOK` GitHub secret set and confirmed green
+  on manual dispatch. `daily-rebuild.yml` fires nightly at 03:00 UTC.
