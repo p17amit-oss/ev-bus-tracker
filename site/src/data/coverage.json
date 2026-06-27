@@ -87,7 +87,7 @@
   "ingest_mode": "planned",
   "crawl_status": "never",
   "last_crawled_at": null,
-  "known_gaps": "STU notice page. Bid submission runs on Delhi e-proc (DSC-gated, not scraped). Not yet indexed."
+  "known_gaps": "DTC publishes tender notices publicly on dtc.delhi.gov.in/tenders (notice board, no login) and on the Delhi NIC eProcurement portal govtprocurement.delhi.gov.in (public Latest Tenders/Corrigendum listing, ~10-item rolling windows). Bid submission is DSC-gated but discovery is open and no captcha is evident, so it does NOT defer like GeM/state-eproc. Recon done 2026-06-26; no scraper built and no rows ingested yet; comprehensive historical discovery not yet validated. Corrigenda are NOT captured: the Latest-Corrigendums feed identifies tenders by issuer NIT ref, a different namespace from the Latest-Tenders feed's GePNIC system codes, so corrigenda cannot be linked to their parent tender by ref; deferred until a linkage mechanism (e.g. PDF-level parent-id extraction) exists."
  },
  {
   "source_key": "gem",
