@@ -6,7 +6,7 @@
   "coverage_grade": "A",
   "ingest_mode": "automated",
   "crawl_status": "ok",
-  "last_crawled_at": "2026-06-30 06:39:14",
+  "last_crawled_at": "2026-07-01 06:52:49",
   "known_gaps": "Retention window ~2 years; older filings need manual backfill."
  },
  {
@@ -16,7 +16,7 @@
   "coverage_grade": "A",
   "ingest_mode": "automated",
   "crawl_status": "ok",
-  "last_crawled_at": "2026-06-30 06:39:20",
+  "last_crawled_at": "2026-07-01 06:52:55",
   "known_gaps": "Corrigenda can overwrite originals; documents are archived on capture to mitigate."
  },
  {
@@ -76,7 +76,7 @@
   "coverage_grade": "B",
   "ingest_mode": "planned",
   "crawl_status": "ok",
-  "last_crawled_at": "2026-06-30 06:39:32",
+  "last_crawled_at": "2026-07-01 06:53:03",
   "known_gaps": "Broad discovery, weak on corrigenda/awards which live on issuer portals. Not yet indexed."
  },
  {
@@ -86,7 +86,7 @@
   "coverage_grade": "B",
   "ingest_mode": "planned",
   "crawl_status": "ok",
-  "last_crawled_at": "2026-06-30 06:39:34",
+  "last_crawled_at": "2026-07-01 06:53:06",
   "known_gaps": "DTC publishes tender notices publicly on dtc.delhi.gov.in/tenders (notice board, no login) and on the Delhi NIC eProcurement portal govtprocurement.delhi.gov.in (public Latest Tenders/Corrigendum listing, ~10-item rolling windows). Bid submission is DSC-gated but discovery is open and no captcha is evident, so it does NOT defer like GeM/state-eproc. Recon done 2026-06-26; no scraper built and no rows ingested yet; comprehensive historical discovery not yet validated. Corrigenda are NOT captured: the Latest-Corrigendums feed identifies tenders by issuer NIT ref, a different namespace from the Latest-Tenders feed's GePNIC system codes, so corrigenda cannot be linked to their parent tender by ref; deferred until a linkage mechanism (e.g. PDF-level parent-id extraction) exists."
  },
  {
@@ -136,7 +136,7 @@
   "coverage_grade": "A",
   "ingest_mode": "planned",
   "crawl_status": "failed",
-  "last_crawled_at": "2026-06-30 06:39:40",
+  "last_crawled_at": "2026-07-01 06:53:11",
   "known_gaps": "Scraper in progress. State data revises ~3 months; trailing months re-captured."
  }
 ]
