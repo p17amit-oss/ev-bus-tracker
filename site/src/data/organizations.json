@@ -160,6 +160,22 @@
   "updated_at": "2026-06-10 19:58:56"
  },
  {
+  "id": 18,
+  "name": "NTPC Limited",
+  "slug": "ntpc-limited",
+  "org_type": "other",
+  "state": null,
+  "city": null,
+  "website": null,
+  "bse_scrip_code": null,
+  "nse_symbol": null,
+  "parent_org_id": null,
+  "aliases": null,
+  "notes": null,
+  "created_at": "2026-07-10 06:26:56",
+  "updated_at": "2026-07-10 06:26:56"
+ },
+ {
   "id": 17,
   "name": "NueGo (GreenCell Mobility)",
   "slug": "nuego",
